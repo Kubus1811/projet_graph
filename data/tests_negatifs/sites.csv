@@ -1,0 +1,5 @@
+id,nom,type,longitude,latitude
+S1,Source,caserne,2.30,48.80
+S2,Noeud 2,quartier,2.31,48.81
+S3,Noeud 3,quartier,2.32,48.82
+S4,Noeud 4,quartier,2.33,48.83

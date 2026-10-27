@@ -1,0 +1,121 @@
+id,nom,type,longitude,latitude
+CAS_01,Caserne 1 - Centre,caserne,2.3768,48.8832
+CAS_02,Caserne 2 - Port Sud,caserne,2.34,48.832
+CAS_03,Caserne 3 - Colline Nord,caserne,2.42,48.936
+CAS_04,Caserne 4 - Parc Est,caserne,2.428,48.864
+HOP_01,CHU Novapolis Centre,hopital,2.3832,48.88
+HOP_02,Hopital Sud Maritime,hopital,2.348,48.824
+HOP_03,Clinique Nord Pasteur,hopital,2.412,48.928
+TEL_01,Hub Telecom Central,telecom,2.38,48.8768
+TEL_02,Datacenter Sud Industrie,telecom,2.332,48.84
+TEL_03,Nœud Telecom Nord,telecom,2.4152,48.9248
+TEL_04,Centre Technique Est,telecom,2.436,48.8672
+ECO_01,Groupe Scolaire 1,ecole,2.3408,48.864
+ECO_02,Groupe Scolaire 2,ecole,2.3576,48.896
+ECO_03,Groupe Scolaire 3,ecole,2.3744,48.928
+ECO_04,Groupe Scolaire 4,ecole,2.3912,48.832
+ECO_05,Groupe Scolaire 5,ecole,2.408,48.864
+ECO_06,Groupe Scolaire 6,ecole,2.4248,48.896
+ECO_07,Groupe Scolaire 7,ecole,2.4416,48.928
+ECO_08,Groupe Scolaire 8,ecole,2.4584,48.832
+QUA_001,Boulevard Q1,quartier,2.3144,48.81744
+QUA_002,Boulevard Q2,quartier,2.31648,48.82912
+QUA_003,Square Q3,quartier,2.31376,48.8432
+QUA_004,Rue Q4,quartier,2.31632,48.85456
+QUA_005,Allée Q5,quartier,2.31712,48.86912
+QUA_006,Boulevard Q6,quartier,2.31712,48.88592
+QUA_007,Boulevard Q7,quartier,2.31488,48.89904
+QUA_008,Avenue Q8,quartier,2.316,48.9104
+QUA_009,Carrefour Q9,quartier,2.31488,48.92672
+QUA_010,Rue Q10,quartier,2.31408,48.94
+QUA_011,Quai Q11,quartier,2.3304,48.81808
+QUA_012,Boulevard Q12,quartier,2.33168,48.82992
+QUA_013,Square Q13,quartier,2.32848,48.84224
+QUA_014,Rue Q14,quartier,2.3288,48.85616
+QUA_015,Square Q15,quartier,2.32912,48.87088
+QUA_016,Carrefour Q16,quartier,2.332,48.88528
+QUA_017,Avenue Q17,quartier,2.32928,48.89664
+QUA_018,Carrefour Q18,quartier,2.32736,48.91056
+QUA_019,Place Q19,quartier,2.32864,48.92336
+QUA_020,Place Q20,quartier,2.32976,48.93856
+QUA_021,Avenue Q21,quartier,2.34192,48.81584
+QUA_022,Boulevard Q22,quartier,2.34464,48.83072
+QUA_023,Quai Q23,quartier,2.34224,48.84176
+QUA_024,Rue Q24,quartier,2.34352,48.85552
+QUA_025,Carrefour Q25,quartier,2.34496,48.87056
+QUA_026,Square Q26,quartier,2.34256,48.88352
+QUA_027,Square Q27,quartier,2.34416,48.8984
+QUA_028,Place Q28,quartier,2.3424,48.9112
+QUA_029,Boulevard Q29,quartier,2.3456,48.92288
+QUA_030,Place Q30,quartier,2.3432,48.93776
+QUA_031,Carrefour Q31,quartier,2.35712,48.81504
+QUA_032,Boulevard Q32,quartier,2.35504,48.82752
+QUA_033,Allée Q33,quartier,2.35552,48.84352
+QUA_034,Quai Q34,quartier,2.35808,48.85744
+QUA_035,Square Q35,quartier,2.35504,48.8712
+QUA_036,Boulevard Q36,quartier,2.35616,48.88528
+QUA_037,Quai Q37,quartier,2.35728,48.89888
+QUA_038,Square Q38,quartier,2.35504,48.9104
+QUA_039,Place Q39,quartier,2.3552,48.9248
+QUA_040,Carrefour Q40,quartier,2.35536,48.9376
+QUA_041,Allée Q41,quartier,2.36848,48.81552
+QUA_042,Avenue Q42,quartier,2.37056,48.83008
+QUA_043,Carrefour Q43,quartier,2.37104,48.84384
+QUA_044,Carrefour Q44,quartier,2.36992,48.8544
+QUA_045,Avenue Q45,quartier,2.36864,48.87056
+QUA_046,Avenue Q46,quartier,2.36912,48.8848
+QUA_047,Quai Q47,quartier,2.36976,48.89552
+QUA_048,Allée Q48,quartier,2.37072,48.91312
+QUA_049,Avenue Q49,quartier,2.3688,48.92416
+QUA_050,Avenue Q50,quartier,2.3688,48.93792
+QUA_051,Square Q51,quartier,2.38544,48.81792
+QUA_052,Rue Q52,quartier,2.38512,48.83072
+QUA_053,Carrefour Q53,quartier,2.38608,48.84144
+QUA_054,Quai Q54,quartier,2.3824,48.85488
+QUA_055,Carrefour Q55,quartier,2.38208,48.87264
+QUA_056,Avenue Q56,quartier,2.38368,48.88512
+QUA_057,Rue Q57,quartier,2.38544,48.8968
+QUA_058,Avenue Q58,quartier,2.38384,48.91184
+QUA_059,Rue Q59,quartier,2.38384,48.92448
+QUA_060,Rue Q60,quartier,2.384,48.93648
+QUA_061,Boulevard Q61,quartier,2.39792,48.81408
+QUA_062,Square Q62,quartier,2.39744,48.828
+QUA_063,Carrefour Q63,quartier,2.396,48.8424
+QUA_064,Place Q64,quartier,2.39872,48.85872
+QUA_065,Carrefour Q65,quartier,2.39968,48.86896
+QUA_066,Place Q66,quartier,2.3984,48.88608
+QUA_067,Avenue Q67,quartier,2.39648,48.89536
+QUA_068,Carrefour Q68,quartier,2.39744,48.91248
+QUA_069,Allée Q69,quartier,2.39776,48.92704
+QUA_070,Avenue Q70,quartier,2.3984,48.94016
+QUA_071,Rue Q71,quartier,2.41232,48.816
+QUA_072,Avenue Q72,quartier,2.40976,48.82736
+QUA_073,Allée Q73,quartier,2.40896,48.84096
+QUA_074,Place Q74,quartier,2.41152,48.8552
+QUA_075,Rue Q75,quartier,2.40944,48.8696
+QUA_076,Place Q76,quartier,2.412,48.88384
+QUA_077,Place Q77,quartier,2.41264,48.89536
+QUA_078,Rue Q78,quartier,2.41024,48.91216
+QUA_079,Place Q79,quartier,2.41312,48.92608
+QUA_080,Square Q80,quartier,2.41008,48.93936
+QUA_081,Square Q81,quartier,2.42336,48.81584
+QUA_082,Boulevard Q82,quartier,2.42704,48.83072
+QUA_083,Square Q83,quartier,2.42656,48.84384
+QUA_084,Place Q84,quartier,2.42384,48.85552
+QUA_085,Allée Q85,quartier,2.42704,48.87248
+QUA_086,Quai Q86,quartier,2.4248,48.88544
+QUA_087,Avenue Q87,quartier,2.42624,48.89984
+QUA_088,Quai Q88,quartier,2.4272,48.91312
+QUA_089,Boulevard Q89,quartier,2.42416,48.92432
+QUA_090,Rue Q90,quartier,2.42336,48.93984
+QUA_091,Boulevard Q91,quartier,2.44016,48.81552
+QUA_092,Place Q92,quartier,2.43648,48.82944
+QUA_093,Square Q93,quartier,2.43664,48.8408
+QUA_094,Place Q94,quartier,2.43936,48.85536
+QUA_095,Boulevard Q95,quartier,2.43952,48.86976
+QUA_096,Boulevard Q96,quartier,2.43984,48.88192
+QUA_097,Square Q97,quartier,2.4376,48.89856
+QUA_098,Square Q98,quartier,2.44064,48.90896
+QUA_099,Allée Q99,quartier,2.43648,48.92288
+QUA_100,Square Q100,quartier,2.43856,48.93872
+QUA_101,Esplanade des Fêtes,quartier,2.38,48.952

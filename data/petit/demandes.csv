@@ -1,0 +1,5 @@
+id,origine,type,priorite
+D1,Q1,incendie,haute
+D2,Q3,malaise,normale
+D3,E1,accident,critique
+D4,H1,materiel,basse

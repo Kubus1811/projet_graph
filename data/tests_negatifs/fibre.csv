@@ -1,0 +1,4 @@
+u,v,cost,statut
+S1,S2,5.0,ouvert
+S2,S3,5.0,ouvert
+S3,S4,5.0,ouvert

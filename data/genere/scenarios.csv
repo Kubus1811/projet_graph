@@ -1,0 +1,4 @@
+scenario,action,u,v,valeur
+fermeture_axe_majeur,fermer_route,S0001,S0002,
+heure_pointe_generale,heure_pointe,,,
+panne_fibre_troncon,fermer_fibre,S0001,S0776,

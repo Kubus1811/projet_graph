@@ -1,0 +1,5 @@
+scenario,action,u,v,valeur
+fermeture_route_C1_Q1,fermer_route,C1,Q1,
+travaux_ralentissement_Q1_Q2,modifier_temps,Q1,Q2,25.0
+heure_pointe_generale,heure_pointe,,,
+panne_fibre_troncon_central,fermer_fibre,Q2,Q3,

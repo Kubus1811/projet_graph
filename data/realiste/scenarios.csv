@@ -1,0 +1,6 @@
+scenario,action,u,v,valeur
+fermeture_pont_central,fermer_route,CAS_01,HOP_01,
+fermeture_pont_central,fermer_route,HOP_01,CAS_01,
+heure_pointe_generale,heure_pointe,,,
+panne_fibre_backbone_sud,fermer_fibre,TEL_01,TEL_02,
+travaux_boulevard_est,modifier_temps,CAS_04,TEL_04,35.0

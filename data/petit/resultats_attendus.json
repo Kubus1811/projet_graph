@@ -1,0 +1,67 @@
+{
+  "graphe": {
+    "nombre_sommets": 8,
+    "nombre_arcs_routes": 19,
+    "nombre_aretes_fibre": 11
+  },
+  "plus_courts_chemins_temps_normal": {
+    "source_C1": {
+      "C1": {"distance": 0.0, "chemin": ["C1"]},
+      "Q1": {"distance": 4.0, "chemin": ["C1", "Q1"]},
+      "H1": {"distance": 7.0, "chemin": ["C1", "Q1", "H1"]},
+      "E1": {"distance": 5.0, "chemin": ["C1", "E1"]},
+      "Q2": {"distance": 7.0, "chemin": ["C1", "E1", "Q2"]},
+      "Q3": {"distance": 11.0, "chemin": ["C1", "E1", "Q2", "Q3"]},
+      "Q4": {"distance": 13.0, "chemin": ["C1", "E1", "Q2", "Q3", "Q4"]},
+      "C2": {"distance": 11.0, "chemin": ["C1", "E1", "C2"]}
+    },
+    "source_C2": {
+      "C2": {"distance": 0.0, "chemin": ["C2"]},
+      "Q4": {"distance": 3.0, "chemin": ["C2", "Q4"]},
+      "Q3": {"distance": 5.0, "chemin": ["C2", "Q4", "Q3"]},
+      "E1": {"distance": 6.0, "chemin": ["C2", "E1"]},
+      "Q2": {"distance": 8.0, "chemin": ["C2", "E1", "Q2"]},
+      "C1": {"distance": 11.0, "chemin": ["C2", "E1", "C1"]},
+      "H1": {"distance": 13.0, "chemin": ["C2", "Q4", "Q3", "H1"]},
+      "Q1": {"distance": 11.0, "chemin": ["C2", "E1", "Q2", "Q1"]}
+    }
+  },
+  "bfs_nombre_arcs_depuis_C1": {
+    "C1": 0,
+    "Q1": 1,
+    "E1": 1,
+    "H1": 2,
+    "Q2": 2,
+    "C2": 2,
+    "Q3": 3,
+    "Q4": 3
+  },
+  "arbre_couvrant_minimal_fibre": {
+    "cout_total": 35.0,
+    "nombre_aretes": 7,
+    "aretes": [
+      ["Q3", "Q4", 3.0],
+      ["C1", "E1", 4.0],
+      ["E1", "Q2", 4.0],
+      ["C1", "Q1", 5.0],
+      ["C2", "Q4", 5.0],
+      ["H1", "Q1", 6.0],
+      ["Q2", "Q3", 8.0]
+    ]
+  },
+  "panne_fibre_Q2_Q3": {
+    "composante_1": ["C1", "E1", "H1", "Q1", "Q2"],
+    "composante_2": ["C2", "Q3", "Q4"],
+    "arete_de_reconnexion_optimale": ["C2", "E1"],
+    "cout_reconnexion": 9.0
+  },
+  "scenario_fermeture_C1_Q1": {
+    "impact_sur_C1_vers_Q1": {
+      "avant": 4.0,
+      "apres": 10.0,
+      "chemin_apres": ["C1", "E1", "Q2", "Q1"],
+      "retard_absolu": 6.0,
+      "retard_relatif": 1.5
+    }
+  }
+}

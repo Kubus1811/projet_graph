@@ -1,0 +1,9 @@
+id,nom,type,longitude,latitude
+C1,Caserne Centrale,caserne,2.3000,48.8500
+C2,Caserne Sud,caserne,2.3200,48.8200
+H1,Hopital Nord,hopital,2.3500,48.8800
+Q1,Quartier Republique,quartier,2.3600,48.8600
+Q2,Quartier Bastille,quartier,2.3700,48.8500
+Q3,Quartier Nation,quartier,2.3900,48.8400
+Q4,Quartier Bercy,quartier,2.3800,48.8300
+E1,Ecole Pasteur,ecole,2.3400,48.8400

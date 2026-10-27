@@ -1,0 +1,7 @@
+# Synthese de Resilience - Module 5
+
+| Scenario | Demandes inaccessibles | Temps moyen (min) | Retard moyen (min) | Retard max (min) | Composantes Fibre | Cout reparation |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| 1. Situation normale | 0 | 5.25 | 0.0 | 0.0 | 1 | 0.0 |
+| 2. Fermeture axe (fermeture_route_C1_Q1) | 0 | 8.25 | 6.0 | 6.0 | 1 | 0.0 |
+| 3. Panne fibre (panne_fibre_troncon_central) | 0 | 5.25 | 0.0 | 0.0 | 1 | 0.0 |

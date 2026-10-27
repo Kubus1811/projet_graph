@@ -1,0 +1,12 @@
+u,v,cost,statut
+C1,H1,12.0,ouvert
+C1,Q1,5.0,ouvert
+Q1,H1,6.0,ouvert
+C1,E1,4.0,ouvert
+E1,Q2,4.0,ouvert
+Q1,Q2,7.0,ouvert
+Q2,Q3,8.0,ouvert
+C2,E1,9.0,ouvert
+C2,Q4,5.0,ouvert
+Q4,Q3,3.0,ouvert
+H1,Q3,15.0,ouvert
