@@ -64,41 +64,78 @@ def cmd_itineraires(chemin_donnees, nom_scenario=None):
         print(f"[ERREUR] {e}")
         return 1
 
-    g_routes = donnees["graphe_routes"]
-    if nom_scenario:
-        print(f"[INFO] Scenario applique : '{nom_scenario}'")
-        g_routes = appliquer_scenario(g_routes, donnees["scenarios"], nom_scenario=nom_scenario)
+    from src import chemins
 
-    try:
-        from src import chemins
-        print("[INFO] Calcul via chemins.py de B...")
-        casernes = [s for s, a in donnees["sites"].items() if a.get("type") == "caserne"]
-        for c in casernes:
-            dist, _ = chemins.dijkstra(g_routes, c)
-            nb = len([d for d in dist.values() if d < float('inf')])
-            print(f"  Caserne {c} : {nb} sites atteignables.")
-    except (ImportError, AttributeError):
-        print("[INFO] Module chemins.py (B) pas encore livre. Calcul de secours interne...")
-        from src.indicateurs import evaluer_resilience_demandes
-        casernes = [s for s, a in donnees["sites"].items() if a.get("type") == "caserne"]
-        res = evaluer_resilience_demandes(g_routes, casernes, donnees["demandes"])
-        print(f"  Demandes traitees : {res['total_demandes']}")
-        print(f"  Demandes inaccessibles : {res['inaccessibles']}")
-        print(f"  Temps moyen intervention : {res['temps_moyen']} min")
+    g_ref = donnees["graphe_routes"]
+    casernes = [s for s, a in donnees["sites"].items() if a.get("type") == "caserne"]
 
+    if not nom_scenario:
+        its = chemins.itineraires_demandes(g_ref, donnees["demandes"], casernes)
+        print(f"{'Demande':<10} {'Site':<10} {'Caserne':<10} {'Duree':>7} {'Arcs':>5}  Chemin")
+        print("-" * 90)
+        for it in its:
+            if it["accessible"]:
+                print(f"{it['demande']:<10} {it['cible']:<10} {it['caserne']:<10} {it['duree']:>7.1f} "
+                      f"{it['nb_arcs']:>5}  {' -> '.join(it['chemin'])}")
+                if it["fermetures"]:
+                    print(f"{'':<46}travaux : {it['fermetures']}")
+            else:
+                print(f"{it['demande']:<10} {it['cible']:<10} {'-':<10} {'INACCESSIBLE':>13}")
+        diff = chemins.comparer_algorithmes(g_ref, sources=casernes, avec_floyd=g_ref.nombre_sommets() <= 400)
+        print(f"\n[INFO] Dijkstra / Bellman-Ford / Floyd-Warshall concordants : {'oui' if not diff else 'NON'}")
+        return 0
+
+    print(f"[INFO] Scenario applique : '{nom_scenario}' (sur une copie)")
+    g_sc = appliquer_scenario(g_ref, donnees["scenarios"], nom_scenario=nom_scenario)
+    lignes = chemins.comparer_scenario(g_ref, g_sc, donnees["demandes"], casernes)
+
+    print(f"{'Demande':<10} {'Site':<10} {'Avant':>7} {'Apres':>7} {'Retard':>7} {'Rel.':>7}  Chemin apres")
+    print("-" * 90)
+    for l in lignes:
+        apres = f"{l['cout_apres']:.1f}" if l["accessible_apres"] else "INACC."
+        retard = f"{l['retard_absolu']:+.1f}" if l["retard_absolu"] is not None else "-"
+        rel = f"{l['retard_relatif']:+.0%}" if l["retard_relatif"] is not None else "-"
+        chemin = " -> ".join(l["chemin_apres"]) if l["chemin_apres"] else "-"
+        print(f"{l['demande']:<10} {l['site']:<10} {l['cout_avant']:>7.1f} {apres:>7} {retard:>7} {rel:>7}  {chemin}")
+        if l["fermetures_rencontrees"]:
+            print(f"{'':<54}fermetures evitees : {l['fermetures_rencontrees']}")
+
+    ind = chemins.indicateurs_routes(lignes, g_sc, casernes)
+    print("\n--- Indicateurs routes ---")
+    print(f"  Demandes devenues inaccessibles : {len(ind['demandes_devenues_inaccessibles'])} {ind['demandes_devenues_inaccessibles']}")
+    print(f"  Demandes retardees              : {ind['nb_demandes_retardees']} / {ind['nb_demandes']}")
+    print(f"  Retard moyen / max              : {ind['retard_moyen']:.2f} / {ind['retard_max']:.2f} min")
+    print(f"  Sites sensibles accessibles     : {ind['proportion_sensibles_accessibles']:.0%}")
     return 0
 
 
-def cmd_accessibilite(chemin_donnees):
+def cmd_accessibilite(chemin_donnees, nom_scenario=None):
     afficher_titre(f"Module 1 - Accessibilite : {chemin_donnees}")
     donnees = charger_jeu_donnees(chemin_donnees, valider=True)
-    try:
-        from src import parcours
-        print("[INFO] Appel parcours.py (B)...")
-    except (ImportError, AttributeError):
-        print("[INFO] Module parcours.py (B) en attente.")
-        g = donnees["graphe_routes"]
-        print(f"  Graphe routier : {g.nombre_sommets()} sommets, {g.nombre_arcs()} arcs.")
+    from src import parcours
+
+    g = donnees["graphe_routes"]
+    if nom_scenario:
+        print(f"[INFO] Scenario applique : '{nom_scenario}' (sur une copie)")
+        g = appliquer_scenario(g, donnees["scenarios"], nom_scenario=nom_scenario)
+
+    diag = parcours.diagnostic_accessibilite(g)
+    print(f"  Graphe routier : {g.nombre_sommets()} sommets, {g.nombre_arcs()} arcs.")
+    print(f"  Casernes : {', '.join(diag['casernes'])}")
+    print("\n--- Accessibilite depuis les casernes (BFS multi-sources) ---")
+    print(f"  Sites atteignables      : {diag['nb_atteignables']} / {diag['nb_sites']}")
+    print(f"  Sites non atteignables  : {diag['non_atteignables'] or 'aucun'}")
+    print(f"  Sites isoles (sans arc) : {diag['isoles'] or 'aucun'}")
+    print(f"  Sites sensibles atteints: {diag['sensibles_accessibles']} / {diag['sensibles_total']}"
+          + (f"  (manquants : {diag['sensibles_non_accessibles']})" if diag["sensibles_non_accessibles"] else ""))
+    print("\n--- Connexite ---")
+    print(f"  Composantes connexes (sens ignore) : {diag['nb_composantes_connexes']}")
+    print(f"  Composantes fortement connexes     : {diag['nb_cfc']} (la plus grande : {diag['plus_grande_cfc']} sites)")
+    petites = [c for c in diag["cfc"] if len(c) < diag["plus_grande_cfc"]]
+    if petites:
+        print(f"  Hors de la grande CFC : {petites[:10]}{' ...' if len(petites) > 10 else ''}")
+    circuit = diag["circuit_exemple"]
+    print(f"  Circuit oriente trouve : {' -> '.join(circuit) if circuit else 'aucun'}")
     return 0
 
 
@@ -187,7 +224,7 @@ def main(arguments=None):
     elif args.operation == "itineraires":
         return cmd_itineraires(args.donnees, args.scenario)
     elif args.operation == "accessibilite":
-        return cmd_accessibilite(args.donnees)
+        return cmd_accessibilite(args.donnees, args.scenario)
     elif args.operation == "mst":
         return cmd_mst(args.donnees)
     elif args.operation == "panne":

@@ -34,10 +34,33 @@ python -m src.cli --donnees data/petit --operation resilience
 python -m src.cli --donnees data/realiste --operation resilience
 ```
 
-### Calculer les itineraires
+### Diagnostic d'accessibilite (Module 1)
+BFS multi-casernes, sites non atteignables / isoles, composantes connexes et fortement connexes, circuit :
+```bash
+python -m src.cli --donnees data/petit --operation accessibilite
+python -m src.cli --donnees data/realiste --operation accessibilite
+python -m src.cli --donnees data/genere --operation accessibilite
+```
+
+### Calculer les itineraires (Module 2)
+Sans scenario : caserne la plus proche et chemin pour chaque demande, plus verification que Dijkstra, Bellman-Ford et Floyd-Warshall concordent.
+Avec scenario : cout avant/apres, retard absolu et relatif, nouveau chemin et indicateurs routes.
 ```bash
 python -m src.cli --donnees data/petit --operation itineraires
+python -m src.cli --donnees data/petit --scenario fermeture_route_C1_Q1 --operation itineraires
 python -m src.cli --donnees data/realiste --scenario fermeture_pont_central --operation itineraires
+python -m src.cli --donnees data/realiste --scenario heure_pointe_generale --operation itineraires
+```
+
+### Visualisation graphique (pygame)
+Fenetre interactive : clic gauche = source, clic droit = cible, `1/2/3` = Dijkstra / Bellman-Ford / Floyd-Warshall,
+`S` = scenario suivant (route fermee en pointille rouge), `M` = mode (chemin, accessibilite, CFC, itineraires),
+`Espace` = animation de l'exploration, molette = zoom, `H` = aide.
+```bash
+python -m src.visu --donnees data/petit
+python -m src.visu --donnees data/realiste --source CAS_01 --cible QUA_007
+# image PNG sans ouvrir de fenetre (pour le rapport)
+python -m src.visu --donnees data/petit --source C1 --cible Q1 --scenario fermeture_route_C1_Q1 --capture resultats/visu_petit_fermeture.png
 ```
 
 ### Generer un gros graphe (ex: 1000 sommets)
@@ -50,7 +73,7 @@ python -m src.cli --generer --sommets 1000 --densite 3.0 --graine 42 --sortie da
 
 ## 3. Lancer les tests
 
-23 tests unitaires avec pytest :
+85 tests unitaires avec pytest :
 ```bash
 pytest tests/ -v
 ```
@@ -72,6 +95,9 @@ pytest tests/ -v
 * `src/graphe.py` : classe Graphe en listes d'adjacence et methode copie profonde.
 * `src/io_donnees.py` : lecture/ecriture CSV et validateur qui bloque les erreurs.
 * `src/generateur.py` : generation de ville aleatoire avec graine.
+* `src/parcours.py` : DFS et BFS iteratifs, accessibilite multi-casernes, circuits (DFS 3 couleurs), Kosaraju (B).
+* `src/chemins.py` : Dijkstra (tas binaire), Bellman-Ford (detection et -inf), Floyd-Warshall, itineraires par demande, scenarios de fermeture (B).
+* `src/visu.py` : visualisation pygame (positions et fleches calculees avec `pygame.math.Vector2`).
 * `src/indicateurs.py` : simulation des scenarios sur copie et module 5.
 * `src/cli.py` : script pour tout lancer en ligne de commande.
 * `data/petit/` : petit graphe de 8 sommets avec les resultats attendus calcules a la main.
