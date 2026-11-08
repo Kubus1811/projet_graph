@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La nuit de l'orage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Concept : une maquette de ville vue de haut pendant une nuit d'orage, et un carnet de regulateur
+   qui raconte la nuit. La carte est le decor, chaque chapitre rejoue de vrais calculs. */
+:root {
+  color-scheme: dark;
+  --nuit: #0a1130;
+  --carnet: #0d1538;
+  --trait: #2d3a70;
+  --encre: #f1f3fc;
+  --encre-2: #b9c3e3;
+  --sodium: #f4b860;
+  --gyro: #62cbff;
+  --retard: #ffe27a;
+  --coupure: #ff6a5c;
+  --secours: #72e6b6;
+  --titre: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --texte: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --chiffres: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; background: var(--nuit); }
+body { color: var(--encre); font: 16px/1.5 var(--texte); }
+button { font: inherit; color: inherit; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--gyro); outline-offset: 2px; }
+
+.scene { position: fixed; inset: 0; overflow: hidden; }
+#ville { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.haut {
+  position: absolute; z-index: 2; top: 18px; left: 24px; right: 24px;
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 10px 22px;
+  pointer-events: none;
+}
+.haut > * { pointer-events: auto; }
+.marque { padding: 7px 11px; background: rgba(10, 17, 48, .78); font: 800 23px/1 var(--titre); letter-spacing: .05em; text-transform: uppercase; }
+.marque small { display: block; margin-top: 3px; font: 400 13px/1.2 var(--texte); letter-spacing: 0; text-transform: none; color: var(--encre-2); }
+.outils { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.outil {
+  min-height: 34px; padding: 4px 11px; background: rgba(10, 17, 48, .78); border: 1px solid var(--trait);
+  border-radius: 3px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center;
+}
+.outil:hover { border-color: var(--encre-2); }
+.outil[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium); }
+
+.carnet {
+  position: absolute; z-index: 2; left: 24px; bottom: 22px; width: min(460px, 40vw); max-height: calc(100% - 100px);
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  background: rgba(13, 21, 56, .93); border: 1px solid var(--trait);
+}
+.entete { padding: 14px 18px 10px; border-bottom: 1px solid var(--trait); }
+.heure { font: 600 15px/1 var(--chiffres); color: var(--sodium); }
+h1 { margin: 6px 0 0; font: 800 clamp(32px, 3.4vw, 44px)/1 var(--titre); letter-spacing: .02em; text-transform: uppercase; text-wrap: balance; }
+.corps { padding: 12px 18px; overflow-y: auto; display: grid; grid-auto-rows: max-content; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; }
+.corps p { margin: 0; }
+.algo { padding: 8px 11px; background: rgba(98, 203, 255, .08); border-left: 2px solid var(--gyro); font-size: 14.5px; line-height: 1.4; }
+.algo b { display: block; font: 600 13px/1.4 var(--chiffres); color: var(--gyro); }
+.mesures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 12px; margin: 0; }
+.mesures dt { font-size: 12.5px; line-height: 1.25; color: var(--encre-2); }
+.mesures dd { margin: 2px 0 0; font: 600 20px/1.2 var(--chiffres); font-variant-numeric: tabular-nums; }
+.mesures .alerte dd { color: var(--coupure); }
+.mesures .moyen dd { color: var(--retard); }
+.film { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font: 600 14px/1.3 var(--chiffres); color: var(--encre-2); font-variant-numeric: tabular-nums; }
+
+.question { font-weight: 700; }
+.options { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.option {
+  width: 100%; padding: 9px 12px; text-align: left; cursor: pointer;
+  background: transparent; border: 1px solid var(--encre-2); border-radius: 3px; font: 600 14.5px/1.35 var(--chiffres);
+}
+.option:hover:not(:disabled) { background: var(--encre); color: var(--nuit); }
+.option:disabled { cursor: default; opacity: .55; }
+.option.choisie { opacity: 1; border-color: var(--retard); color: var(--retard); }
+.option.meilleure { opacity: 1; border-color: var(--secours); color: var(--secours); }
+.verdict { padding: 9px 11px; border: 1px solid var(--trait); font-size: 15px; display: grid; gap: 4px; }
+.verdict strong { font: 800 22px/1.1 var(--titre); letter-spacing: .03em; text-transform: uppercase; color: var(--retard); }
+.verdict.bon strong { color: var(--secours); }
+
+.bilan-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.bilan-table th { padding: 4px 8px 4px 0; text-align: left; font-size: 12.5px; color: var(--encre-2); border-bottom: 1px solid var(--trait); }
+.bilan-table td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--trait); font-family: var(--chiffres); font-size: 13px; vertical-align: top; }
+.bilan-table td:first-child, .bilan-table td:last-child { white-space: nowrap; }
+.reco { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; }
+.note { font-size: 13px; color: var(--encre-2); }
+
+.pied { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 18px; border-top: 1px solid var(--trait); }
+#progression { font: 600 13px/1 var(--chiffres); color: var(--encre-2); }
+.boutons { display: flex; gap: 8px; }
+.discret { min-height: 40px; padding: 4px 12px; background: none; border: 1px solid var(--trait); border-radius: 3px; cursor: pointer; }
+.discret:disabled { opacity: .35; cursor: default; }
+#suivant { min-height: 40px; padding: 4px 18px; border: 0; border-radius: 3px; cursor: pointer; background: var(--sodium); color: var(--nuit); font: 800 19px/1 var(--titre); letter-spacing: .05em; text-transform: uppercase; }
+#suivant:hover:not(:disabled) { background: var(--encre); }
+#suivant:disabled { background: var(--trait); color: var(--encre-2); cursor: default; }
+#erreur { margin: 0; color: var(--coupure); }
+
+@media (max-width: 860px) {
+  html, body { height: auto; }
+  .scene { position: static; overflow: visible; display: grid; }
+  #ville { position: sticky; top: 0; z-index: 1; height: 50vh; min-height: 280px; background: var(--nuit); }
+  .haut { position: static; padding: 12px 16px; order: -1; }
+  .carnet { position: static; width: auto; max-height: none; margin: 0 16px 16px; }
+  .corps { overflow: visible; }
+}
+</style>
+</head>
+<body>
+<div class="scene">
+  <canvas id="ville" role="img" aria-label="Maquette de Novapolis pendant la nuit"></canvas>
+
+  <div class="haut">
+    <div class="marque">La nuit de l'orage<small id="avertissement"></small></div>
+    <div class="outils">
+      <button type="button" class="outil" id="radio" aria-pressed="false">Radio : coupée</button>
+      <a class="outil" href="/salle">Salle de crise (mode libre)</a>
+      <a class="outil" href="/routes">Routes (partie B)</a>
+    </div>
+  </div>
+
+  <article class="carnet" aria-live="polite">
+    <header class="entete">
+      <div class="heure" id="heure"></div>
+      <h1 id="titre">Chargement de la ville</h1>
+    </header>
+    <div class="corps" id="corps"></div>
+    <footer class="pied">
+      <span id="progression"></span>
+      <div class="boutons">
+        <button type="button" class="discret" id="precedent">Retour</button>
+        <button type="button" id="suivant">Suivant</button>
+      </div>
+    </footer>
+  </article>
+</div>
+
+<script>
+const E = {
+  recit: null, carte: null, i: 0, choix: {}, resultats: new Map(), res: null,
+  pos: {}, statique: null, film: null, kruskal: null, survol: null, numero: 0, flash: 0, rideau: 1,
+};
+const $ = (id) => document.getElementById(id);
+const toile = $("ville"), ctx = toile.getContext("2d");
+const calme = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const COUL = { sodium: "#f4b860", gyro: "#62cbff", retard: "#ffe27a", coupure: "#ff6a5c", secours: "#72e6b6", encre: "#f1f3fc" };
+const CIELS = {
+  soir: ["#25235f", "#0d1438"], pointe: ["#311f58", "#0e1438"], orage: ["#141b3c", "#070b20"],
+  nuit: ["#10194a", "#080d26"], foudre: ["#1b1f4c", "#070a1e"], aube: ["#f0a878", "#3c4b8c"],
+};
+
+function h(balise, attributs = {}, ...enfants) {
+  const el = document.createElement(balise);
+  for (const [k, v] of Object.entries(attributs)) {
+    if (k === "onclick" || k === "onmouseenter" || k === "onmouseleave" || k === "onfocus" || k === "onblur") el[k] = v;
+    else if (v !== null && v !== undefined) el.setAttribute(k, v);
+  }
+  el.append(...enfants);
+  return el;
+}
+const nb = (x, d = 1) => x === null || x === undefined ? "–" : x.toLocaleString("fr-FR", { maximumFractionDigits: d });
+const cle = (u, v) => u < v ? `${u}|${v}` : `${v}|${u}`;
+const chapitre = () => E.recit.chapitres[E.i];
+
+async function api(url, options) {
+  const r = await fetch(url, options);
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.erreur || "Le serveur a refusé la demande.");
+  return d;
+}
+
+async function resultat(etat) {
+  const k = JSON.stringify(etat);
+  if (!E.resultats.has(k)) {
+    E.resultats.set(k, await api("/api/simuler", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jeu: E.recit.jeu, ...etat }) }));
+  }
+  return E.resultats.get(k);
+}
+
+/* --- Geometrie : plan de la ville vers ecran isometrique --- */
+function mesurer() {
+  const ratio = Math.min(2, devicePixelRatio || 1);
+  const l = toile.clientWidth, t = toile.clientHeight;
+  toile.width = l * ratio; toile.height = t * ratio;
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  E.l = l; E.t = t; E.ratio = ratio;
+
+  const sites = E.carte.sites;
+  const lat0 = sites.reduce((s, x) => s + x.latitude, 0) / sites.length, k = Math.cos(lat0 * Math.PI / 180);
+  const brut = sites.map((x) => {
+    const px = x.longitude * k, py = -x.latitude;
+    return { id: x.id, X: (px - py) * .87, Y: (px + py) * .5 };
+  });
+  const xs = brut.map((b) => b.X), ys = brut.map((b) => b.Y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+
+  // la ville se place a droite du carnet sur grand ecran
+  const large = l > 860;
+  const carnet = document.querySelector(".carnet").getBoundingClientRect();
+  const gauche = large ? carnet.right + 20 : 16, droite = l - 26, haut = large ? 72 : 24, bas = t - 30;
+  const e = Math.min((droite - gauche) / (maxX - minX), (bas - haut) / (maxY - minY));
+  const ox = gauche + (droite - gauche - (maxX - minX) * e) / 2, oy = haut + (bas - haut - (maxY - minY) * e) / 2;
+  E.pos = {};
+  for (const b of brut) E.pos[b.id] = { x: ox + (b.X - minX) * e, y: oy + (b.Y - minY) * e };
+  E.u = Math.max(.62, Math.min(1.25, Math.min(droite - gauche, bas - haut) / 700));
+  construireStatique();
+}
+
+function graine(texte) {
+  let g = 2166136261;
+  for (const c of texte) g = Math.imul(g ^ c.charCodeAt(0), 16777619);
+  return () => {
+    g = Math.imul(g ^ (g >>> 15), 2246822507);
+    g = Math.imul(g ^ (g >>> 13), 3266489909);
+    g ^= g >>> 16;
+    return (g >>> 0) / 4294967296;
+  };
+}
+
+function immeuble(c, x, y, l, ha, faces, fenetres, alea) {
+  const dy = l * .5;
+  const poly = (couleur, ...p) => {
+    c.fillStyle = couleur; c.beginPath(); c.moveTo(p[0], p[1]);
+    for (let i = 2; i < p.length; i += 2) c.lineTo(p[i], p[i + 1]);
+    c.closePath(); c.fill();
+  };
+  poly(faces[1], x - l, y, x, y + dy, x, y + dy - ha, x - l, y - ha);
+  poly(faces[2], x + l, y, x, y + dy, x, y + dy - ha, x + l, y - ha);
+  poly(faces[0], x, y - dy - ha, x + l, y - ha, x, y + dy - ha, x - l, y - ha);
+  if (!fenetres) return;
+  c.fillStyle = fenetres;
+  const pas = Math.max(3.2, 3.6 * E.u);
+  for (let r = pas; r < ha - 1; r += pas) {
+    for (let k = .22; k < .95; k += .36) {
+      const allume = alea();
+      if (allume < .42) c.fillRect(x - l + l * k, y + dy * k - r, 1.5 * E.u, 1.5 * E.u);
+      if (allume > .6) c.fillRect(x + l - l * k, y + dy * k - r, 1.5 * E.u, 1.5 * E.u);
+    }
+  }
+}
+
+function rampe(t) {
+  const m = (a, b, r) => a.map((v, i) => Math.round(v + (b[i] - v) * r));
+  const x = Math.max(0, Math.min(1, t));
+  const c = x < .5 ? m([98, 203, 255], [255, 226, 122], x * 2) : m([255, 226, 122], [255, 106, 92], (x - .5) * 2);
+  return `rgb(${c.join(",")})`;
+}
+
+function construireStatique() {
+  if (!E.pos || !E.res) return;
+  const off = document.createElement("canvas");
+  off.width = toile.width; off.height = toile.height;
+  const c = off.getContext("2d");
+  c.setTransform(E.ratio, 0, 0, E.ratio, 0, 0);
+  const ch = chapitre(), P = E.pos, u = E.u, aube = ch.ambiance === "aube", fibre = ch.vue === "fibre";
+
+  const axes = new Map();
+  for (const r of E.carte.routes) axes.set(cle(r.u, r.v), r);
+  const fermes = new Set(ch.etat.routes_fermees.map(([a, b]) => cle(a, b)));
+
+  c.lineCap = "round";
+  for (const [k, r] of axes) {
+    const a = P[r.u], b = P[r.v];
+    if (fermes.has(k)) continue;
+    c.setLineDash([]);
+    c.strokeStyle = aube ? "rgba(70,80,130,.55)" : `rgba(244,184,96,${fibre ? .05 : .11})`;
+    c.lineWidth = 4.5 * u;
+    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+    if (!aube) {
+      c.setLineDash([0, 6.5 * u]);
+      c.strokeStyle = fibre ? "rgba(244,184,96,.22)" : "rgba(255,206,130,.95)";
+      c.lineWidth = 1.9 * u;
+      if (!fibre) { c.shadowColor = "#f4b860"; c.shadowBlur = 4; }
+      c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+      c.shadowBlur = 0;
+    }
+  }
+  c.setLineDash([]);
+
+  const temps = E.res.temps_sites;
+  const maxT = Math.max(1, ...Object.values(E.resultats.get(JSON.stringify({ routes_fermees: [], fibres_en_panne: [], pointe: false }))?.temps_sites ?? temps).filter((t) => t !== null));
+  const ordre = [...E.carte.sites].sort((a, b) => P[a.id].y - P[b.id].y);
+  const faces = aube
+    ? { q: ["#5d6aa8", "#3b4680", "#2d3768"], f: "#fff0c4" }
+    : { q: ["#2e3a78", "#1a2353", "#141b44"], f: "#ffd98e" };
+
+  for (const s of ordre) {
+    const p = P[s.id], alea = graine(s.id), t = temps[s.id];
+    if (!fibre) {
+      c.fillStyle = t === null ? COUL.coupure : rampe(t / maxT);
+      c.globalAlpha = aube ? .45 : .34;
+      c.beginPath(); c.ellipse(p.x, p.y + 1, 15 * u, 7.5 * u, 0, 0, 7); c.fill();
+      c.globalAlpha = 1;
+    }
+    if (s.type === "caserne") {
+      immeuble(c, p.x, p.y, 13 * u, 15 * u, ["#ff6a5c", "#d9d9e6", "#aeb0c6"], "#1a2353", alea);
+    } else if (s.type === "hopital") {
+      immeuble(c, p.x, p.y, 12 * u, 32 * u, ["#ffffff", "#d5dcf2", "#a6afd2"], "#62cbff", alea);
+      c.fillStyle = COUL.coupure;
+      c.fillRect(p.x - 5 * u, p.y - 32 * u - 1.4 * u, 10 * u, 2.8 * u);
+      c.fillRect(p.x - 1.4 * u, p.y - 32 * u - 4 * u, 2.8 * u, 8 * u);
+    } else if (s.type === "telecom") {
+      immeuble(c, p.x, p.y, 7 * u, 8 * u, faces.q, faces.f, alea);
+      c.strokeStyle = "#b9c3e3"; c.lineWidth = 1.4 * u;
+      c.beginPath(); c.moveTo(p.x, p.y - 8 * u); c.lineTo(p.x, p.y - 38 * u); c.stroke();
+    } else if (s.type === "ecole") {
+      immeuble(c, p.x, p.y, 13 * u, 8 * u, ["#72e6b6", "#3e8f8a", "#2f706f"], faces.f, alea);
+    } else {
+      const n = 1 + Math.floor(alea() * 3);
+      for (let i = 0; i < n; i += 1) {
+        const dx = (alea() - .5) * 15 * u, dy = (alea() - .5) * 7 * u;
+        immeuble(c, p.x + dx, p.y + dy, (3.5 + alea() * 3.5) * u, (6 + alea() * 21) * u, faces.q, t === null && !fibre ? null : faces.f, alea);
+      }
+    }
+  }
+
+  c.font = `600 ${Math.max(11, 12 * u)}px "IBM Plex Mono", ui-monospace, Menlo, monospace`;
+  c.textAlign = "center"; c.lineWidth = 3.5; c.lineJoin = "round"; c.strokeStyle = "rgba(8,13,38,.92)"; c.fillStyle = "#f1f3fc";
+  for (const s of E.carte.sites) {
+    if (s.type !== "caserne" && s.type !== "hopital") continue;
+    const p = P[s.id], y = p.y - (s.type === "hopital" ? 44 : 24) * u;
+    c.strokeText(s.id, p.x, y); c.fillText(s.id, p.x, y);
+  }
+  E.statique = off;
+}
+
+/* --- Dessin de chaque image --- */
+function ligne(a, b, couleur, epais, tirets) {
+  ctx.setLineDash(tirets ?? []);
+  ctx.strokeStyle = couleur; ctx.lineWidth = epais; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  ctx.setLineDash([]);
+}
+function croix(a, b, couleur) {
+  const x = (a.x + b.x) / 2, y = (a.y + b.y) / 2, r = 6 * E.u;
+  ctx.strokeStyle = couleur; ctx.lineWidth = 3 * E.u; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r); ctx.moveTo(x - r, y + r); ctx.lineTo(x + r, y - r); ctx.stroke();
+}
+function trajet(chemin, durees) {
+  const c = [0];
+  for (let i = 1; i < chemin.length; i += 1) c.push(c[i - 1] + (durees.get(`${chemin[i - 1]}|${chemin[i]}`) ?? 0));
+  return { chemin, c, total: c[c.length - 1] };
+}
+function surTrajet(t, tr) {
+  if (t >= tr.total) return E.pos[tr.chemin[tr.chemin.length - 1]];
+  let i = 1;
+  while (tr.c[i] < t) i += 1;
+  const r = (t - tr.c[i - 1]) / ((tr.c[i] - tr.c[i - 1]) || 1);
+  const a = E.pos[tr.chemin[i - 1]], b = E.pos[tr.chemin[i]];
+  return { x: a.x + (b.x - a.x) * r, y: a.y + (b.y - a.y) * r };
+}
+function durees(pointe) {
+  const m = new Map();
+  for (const r of E.carte.routes) m.set(`${r.u}|${r.v}`, pointe ? r.temps_pointe : r.temps_normal);
+  return m;
+}
+
+function lancerFilm() {
+  const ch = chapitre();
+  E.kruskal = null; E.film = null;
+  if (!E.res) return;
+  if (ch.kruskal) {
+    E.kruskal = { debut: performance.now(), duree: calme ? 0 : 9000 };
+    return;
+  }
+  if (ch.vue !== "routes" || ch.vehicules === false) return;
+  const d = durees(ch.etat.pointe), ref = durees(false);
+  const vehicules = E.res.demandes.filter((x) => x.chemin).map((x) => ({
+    tr: trajet(x.chemin, d), retard: x.retard > 0,
+    fantome: x.retard > 0 && x.chemin_avant ? trajet(x.chemin_avant, ref) : null,
+  }));
+  const maxT = Math.max(1, ...vehicules.map((v) => v.tr.total));
+  E.film = { vehicules, maxT, debut: performance.now(), duree: calme ? 0 : Math.min(13000, 6000 + maxT * 50) };
+}
+
+const pluie = Array.from({ length: 170 }, (_, i) => { const a = graine(`p${i}`); return { x: a(), y: a(), v: .55 + a() * .7 }; });
+
+function image(maintenant) {
+  requestAnimationFrame(image);
+  if (!E.recit || !E.statique) return;
+  const ch = chapitre(), P = E.pos, u = E.u, l = E.l, t = E.t;
+
+  const ciel = ctx.createLinearGradient(0, 0, 0, t);
+  ciel.addColorStop(0, CIELS[ch.ambiance][0]); ciel.addColorStop(1, CIELS[ch.ambiance][1]);
+  ctx.fillStyle = ciel; ctx.fillRect(0, 0, l, t);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(E.statique, 0, 0);
+  ctx.setTransform(E.ratio, 0, 0, E.ratio, 0, 0);
+
+  for (const [a, b] of ch.etat.routes_fermees) {
+    if (a > b && ch.etat.routes_fermees.some(([x, y]) => x === b && y === a)) continue;
+    ligne(P[a], P[b], COUL.coupure, 3 * u, [3 * u, 7 * u]);
+    croix(P[a], P[b], COUL.coupure);
+  }
+
+  if (ch.vue === "fibre") dessinerFibre(ch, maintenant);
+  else {
+    for (const d of E.res.demandes) {
+      if (!d.chemin || ch.vehicules === false) continue;
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.strokeStyle = d.retard > 0 ? COUL.retard : COUL.gyro;
+      ctx.globalAlpha = d.retard > 0 ? .85 : .42;
+      ctx.lineWidth = (d.retard > 0 ? 2.8 : 1.8) * u;
+      ctx.beginPath();
+      d.chemin.forEach((i, k) => k ? ctx.lineTo(P[i].x, P[i].y) : ctx.moveTo(P[i].x, P[i].y));
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    dessinerFilm(maintenant);
+  }
+
+  // balises rouges des mats telecom
+  if (!calme) {
+    const allume = Math.floor(maintenant / 700) % 2 === 0;
+    if (allume) for (const s of E.carte.sites) {
+      if (s.type !== "telecom") continue;
+      ctx.fillStyle = COUL.coupure; ctx.beginPath(); ctx.arc(P[s.id].x, P[s.id].y - 38 * u, 2.4 * u, 0, 7); ctx.fill();
+    }
+  }
+
+  if (E.survol) {
+    const [a, b] = E.survol, r = .55 + .45 * Math.sin(maintenant / 170);
+    ctx.globalAlpha = calme ? 1 : r;
+    ligne(P[a], P[b], COUL.encre, 7 * u);
+    ctx.globalAlpha = 1;
+  }
+  for (const [a, b] of ch.surlignes) {
+    const x = (P[a].x + P[b].x) / 2, y = (P[a].y + P[b].y) / 2;
+    const phase = calme ? .5 : (maintenant % 1500) / 1500;
+    ctx.strokeStyle = COUL.coupure; ctx.lineWidth = 1.8; ctx.globalAlpha = 1 - phase;
+    ctx.beginPath(); ctx.ellipse(x, y, (9 + 26 * phase) * u, (4.5 + 13 * phase) * u, 0, 0, 7); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  if (!calme && (ch.ambiance === "orage" || ch.ambiance === "foudre")) {
+    ctx.strokeStyle = "rgba(190,210,255,.28)"; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (const g of pluie) {
+      const y = ((g.y + maintenant / 900 * g.v) % 1) * t, x = ((g.x - maintenant / 5200 * g.v) % 1 + 1) % 1 * l;
+      ctx.moveTo(x, y); ctx.lineTo(x - 3, y + 15);
+    }
+    ctx.stroke();
+  }
+  if (!calme && ch.ambiance === "foudre") {
+    // eclair lent et discret, pas de clignotement rapide
+    const cycle = maintenant % 7000;
+    if (cycle < 450) { ctx.fillStyle = `rgba(205,220,255,${.13 * (1 - cycle / 450)})`; ctx.fillRect(0, 0, l, t); }
+  }
+  if (E.rideau > 0) {
+    ctx.fillStyle = `rgba(7,11,32,${E.rideau})`; ctx.fillRect(0, 0, l, t);
+    E.rideau = calme ? 0 : Math.max(0, E.rideau - .035);
+  }
+}
+
+function dessinerFilm(maintenant) {
+  const f = E.film;
+  if (!f) return;
+  const p = f.duree ? Math.min(1, (maintenant - f.debut) / f.duree) : 1, t = p * f.maxT;
+  let arrives = 0;
+  const clignote = Math.floor(maintenant / 130) % 2 === 0;
+  for (const v of f.vehicules) {
+    if (v.fantome) {
+      const q = surTrajet(t, v.fantome);
+      ctx.strokeStyle = COUL.encre; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(q.x, q.y, 4.2 * E.u, 0, 7); ctx.stroke();
+    }
+    const a = surTrajet(t, v.tr);
+    if (t >= v.tr.total) arrives += 1;
+    const couleur = v.retard ? COUL.retard : clignote ? COUL.gyro : COUL.encre;
+    ctx.fillStyle = couleur; ctx.globalAlpha = .28;
+    ctx.beginPath(); ctx.arc(a.x, a.y, 10 * E.u, 0, 7); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.arc(a.x, a.y, 4 * E.u, 0, 7); ctx.fill();
+  }
+  const zone = $("film-etat");
+  if (zone) zone.textContent = `T+ ${nb(t)} min · ${arrives} / ${f.vehicules.length} arrivés`;
+}
+
+function dessinerFibre(ch, maintenant) {
+  const P = E.pos, u = E.u;
+  if (E.kruskal) {
+    const etapes = E.recit.kruskal_etapes, k = E.kruskal;
+    const p = k.duree ? Math.min(1, (maintenant - k.debut) / k.duree) : 1;
+    const n = Math.floor(p * etapes.length);
+    let cout = 0, gardees = 0;
+    for (let i = 0; i < n; i += 1) {
+      const e = etapes[i];
+      if (e.gardee) {
+        cout += e.cout; gardees += 1;
+        ctx.shadowColor = COUL.gyro; ctx.shadowBlur = 5;
+        ligne(P[e.u], P[e.v], COUL.gyro, 2.4 * u);
+        ctx.shadowBlur = 0;
+      } else if (i > n - 8) {
+        ctx.globalAlpha = (i - n + 8) / 8;
+        ligne(P[e.u], P[e.v], COUL.coupure, 3 * u);
+        ctx.globalAlpha = 1;
+      }
+    }
+    const zone = $("film-etat");
+    if (zone) zone.textContent = `${n} / ${etapes.length} tronçons lus · ${gardees} gardés · ${nb(cout)} k€`;
+    return;
+  }
+  const f = E.res.fibre;
+  ctx.shadowColor = COUL.gyro; ctx.shadowBlur = 5;
+  for (const [a, b] of f.restantes) ligne(P[a], P[b], COUL.gyro, 2.4 * u);
+  ctx.shadowBlur = 0;
+  for (const [a, b] of ch.etat.fibres_en_panne) { ligne(P[a], P[b], COUL.coupure, 3 * u, [3 * u, 7 * u]); croix(P[a], P[b], COUL.coupure); }
+  const choix = ch.decision && E.choix[ch.id];
+  if (choix) {
+    const opt = ch.decision.options.find((o) => o.id === choix);
+    ctx.shadowColor = COUL.secours; ctx.shadowBlur = 8;
+    ligne(P[opt.surligne[0]], P[opt.surligne[1]], COUL.secours, 4.5 * u);
+    ctx.shadowBlur = 0;
+  }
+}
+
+/* --- Radio --- */
+let audio = null, radioActive = false;
+function bip() {
+  try {
+    audio = audio || new AudioContext();
+    [0, .14].forEach((d, i) => {
+      const o = audio.createOscillator(), g = audio.createGain(), t0 = audio.currentTime + d;
+      o.type = "square"; o.frequency.value = i ? 1180 : 880;
+      g.gain.setValueAtTime(.035, t0); g.gain.exponentialRampToValueAtTime(.0005, t0 + .11);
+      o.connect(g); g.connect(audio.destination); o.start(t0); o.stop(t0 + .12);
+    });
+  } catch { /* le son reste optionnel */ }
+}
+function parler(texte) {
+  if (!radioActive || !("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  bip();
+  const m = new SpeechSynthesisUtterance(texte);
+  m.lang = "fr-FR"; m.rate = 1.04;
+  const voix = speechSynthesis.getVoices().find((v) => v.lang.startsWith("fr"));
+  if (voix) m.voice = voix;
+  setTimeout(() => speechSynthesis.speak(m), 320);
+}
+
+/* --- Carnet --- */
+function mesuresDe(ch) {
+  const i = E.res.indicateurs;
+  const m = (nom, valeur, classe) => h("div", { class: classe || null }, h("dt", {}, nom), h("dd", {}, valeur));
+  if (ch.vue === "fibre") {
+    // une fois le troncon pose, le bilan compte la reparation choisie par le joueur
+    const pose = ch.decision && E.choix[ch.id] ? ch.decision.options.find((o) => o.id === E.choix[ch.id]) : null;
+    const restent = i.composantes_fibre - (pose ? 1 : 0);
+    const cout = E.res.fibre.restantes.reduce((s, a) => s + a[2], 0) + (pose ? pose.valeur : 0);
+    return [
+      m("Morceaux de réseau", String(restent), restent > 1 ? "alerte" : null),
+      m("Tronçons actifs", String(E.res.fibre.restantes.length + (pose ? 1 : 0))),
+      m("Coût du réseau", `${nb(cout)} k€`),
+    ];
+  }
+  return [
+    m("Sans secours", `${i.inaccessibles} / ${i.total_demandes}`, i.inaccessibles ? "alerte" : null),
+    m("Retard moyen", `${nb(i.retard_moyen)} min`, i.retard_moyen ? "moyen" : null),
+    m("Retard maximal", `${nb(i.retard_max)} min`, i.retard_max ? "moyen" : null),
+  ];
+}
+
+function panneauDecision(ch) {
+  const d = ch.decision, pris = E.choix[ch.id];
+  const zone = [h("p", { class: "question" }, d.question)];
+  zone.push(h("ul", { class: "options" }, ...d.options.map((o) => {
+    let classe = "option";
+    if (pris && o.meilleure) classe += " meilleure";
+    else if (pris === o.id) classe += " choisie";
+    const b = h("button", {
+      type: "button", class: classe,
+      onclick: () => choisir(ch, o),
+      onmouseenter: () => { E.survol = o.surligne; }, onmouseleave: () => { E.survol = null; },
+      onfocus: () => { E.survol = o.surligne; }, onblur: () => { E.survol = null; },
+    }, o.libelle);
+    if (pris) b.disabled = true;
+    return h("li", {}, b);
+  })));
+  if (pris) {
+    const o = d.options.find((x) => x.id === pris);
+    zone.push(h("div", { class: `verdict${o.meilleure ? " bon" : ""}` },
+      h("strong", {}, o.meilleure ? "Décision optimale" : `${nb(o.ecart)} ${d.unite} de plus`),
+      h("span", {}, o.reponse),
+      h("span", { class: "note" }, d.explication)));
+  }
+  return zone;
+}
+
+async function choisir(ch, o) {
+  E.choix[ch.id] = o.id;
+  E.survol = null;
+  if (o.etat) {
+    const etat = { routes_fermees: o.etat.routes_fermees, fibres_en_panne: o.etat.fibres_en_panne, pointe: o.etat.pointe };
+    ch.etat = etat;
+    E.res = await resultat(etat);
+    construireStatique();
+    lancerFilm();
+  }
+  parler(o.meilleure ? "Bien reçu, décision optimale." : "Bien reçu, nous exécutons.");
+  afficherCarnet();
+  $("suivant").focus();
+}
+
+function panneauBilan() {
+  const prises = E.recit.chapitres.filter((c) => c.decision);
+  const bons = prises.filter((c) => c.decision.options.find((o) => o.id === E.choix[c.id])?.meilleure).length;
+  const lignes = prises.map((c) => {
+    const o = c.decision.options.find((x) => x.id === E.choix[c.id]), m = c.decision.options.find((x) => x.meilleure);
+    return h("tr", {}, h("td", {}, c.heure), h("td", {}, o ? o.libelle : "–"), h("td", {}, m.libelle), h("td", {}, o ? (o.meilleure ? "Optimal" : `+${nb(o.ecart)} ${c.decision.unite}`) : "–"));
+  });
+  return [
+    h("div", { class: `verdict${bons === prises.length ? " bon" : ""}` }, h("strong", {}, `${bons} décision(s) optimale(s) sur ${prises.length}`)),
+    h("div", { style: "overflow-x:auto" }, h("table", { class: "bilan-table" },
+      h("thead", {}, h("tr", {}, h("th", {}, "Heure"), h("th", {}, "Votre choix"), h("th", {}, "L'optimum"), h("th", {}, "Écart"))),
+      h("tbody", {}, ...lignes))),
+    h("div", {}, h("p", { class: "question" }, "Recommandations pour la ville"), h("ul", { class: "reco" }, ...E.recit.recommandations.map((r) => h("li", {}, r)))),
+  ];
+}
+
+function afficherCarnet() {
+  const ch = chapitre(), derniers = E.i === E.recit.chapitres.length - 1;
+  $("heure").textContent = ch.heure;
+  $("titre").textContent = ch.titre;
+  const corps = [...ch.lignes.map((l) => h("p", {}, l))];
+  corps.push(h("dl", { class: "mesures" }, ...mesuresDe(ch)));
+  if (ch.kruskal || (ch.vue === "routes" && ch.vehicules !== false)) {
+    corps.push(h("div", { class: "film" }, h("span", { id: "film-etat" }), h("button", { type: "button", class: "discret", onclick: lancerFilm }, "Rejouer")));
+  }
+  if (ch.decision) corps.push(...panneauDecision(ch));
+  if (derniers) corps.push(...panneauBilan());
+  corps.push(h("div", { class: "algo" }, h("b", {}, `Ce que fait l'ordinateur : ${ch.algorithme.nom}`), ch.algorithme.idee));
+  $("corps").replaceChildren(...corps);
+  $("corps").scrollTop = 0;
+  $("progression").textContent = `${E.i + 1} / ${E.recit.chapitres.length}`;
+  $("precedent").disabled = E.i === 0;
+  $("suivant").textContent = derniers ? "Recommencer" : "Suivant";
+  $("suivant").disabled = Boolean(ch.decision && !E.choix[ch.id]);
+}
+
+async function allerA(i) {
+  const n = ++E.numero;
+  E.i = i;
+  E.survol = null;
+  const ch = chapitre();
+  try {
+    const res = await resultat(ch.etat);
+    if (n !== E.numero) return;
+    E.res = res;
+    E.rideau = .85;
+    construireStatique();
+    afficherCarnet();
+    lancerFilm();
+    parler(ch.radio);
+  } catch (e) {
+    $("corps").replaceChildren(h("p", { id: "erreur", role: "alert" }, `${e.message} Relancez le site, puis rechargez la page.`));
+  }
+}
+
+async function demarrer() {
+  try {
+    const [recit, carte] = await Promise.all([api("/api/recit"), api("/api/carte?jeu=realiste")]);
+    E.recit = recit; E.carte = carte;
+    $("avertissement").textContent = recit.avertissement;
+    await resultat({ routes_fermees: [], fibres_en_panne: [], pointe: false });
+    mesurer();
+    await allerA(0);
+    mesurer();
+    requestAnimationFrame(image);
+  } catch (e) {
+    $("titre").textContent = "La ville ne répond pas";
+    $("corps").replaceChildren(h("p", { id: "erreur", role: "alert" }, `${e.message} Relancez le site, puis rechargez la page.`));
+  }
+}
+
+$("suivant").onclick = () => {
+  if (E.i === E.recit.chapitres.length - 1) { E.choix = {}; E.resultats = new Map(); location.reload(); return; }
+  allerA(E.i + 1);
+};
+$("precedent").onclick = () => { if (E.i > 0) allerA(E.i - 1); };
+$("radio").onclick = () => {
+  radioActive = !radioActive;
+  $("radio").setAttribute("aria-pressed", String(radioActive));
+  $("radio").textContent = radioActive ? "Radio : active" : "Radio : coupée";
+  if (radioActive && E.recit) parler(chapitre().radio);
+  else if ("speechSynthesis" in window) speechSynthesis.cancel();
+};
+if (!("speechSynthesis" in window)) $("radio").hidden = true;
+addEventListener("resize", () => { if (E.carte) mesurer(); });
+demarrer();
+</script>
+</body>
+</html>

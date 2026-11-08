@@ -35,22 +35,27 @@ def cmd_resilience(chemin_donnees, nom_scenario=None):
         print(f"[ERREUR] Chargement impossible : {e}")
         return 1
 
-    resultat = orchestrer_module_5(donnees)
+    try:
+        resultat = orchestrer_module_5(donnees)
+    except ValueError as e:
+        print(f"[ERREUR] {e}")
+        return 1
     tableau = resultat["tableau"]
 
     print("\n--- Tableau comparatif des scenarios ---")
-    headers = ["Scenario", "Inacc.", "Tps moy", "Retard moy", "Retard max", "Comp. Fibre", "Cout repar."]
-    print(f"{headers[0]:<35} | {headers[1]:<7} | {headers[2]:<9} | {headers[3]:<10} | {headers[4]:<10} | {headers[5]:<11} | {headers[6]:<11}")
-    print("-" * 105)
+    headers = ["Scenario", "Inacc.", "Tps moy", "Retard moy", "Retard max", "Sensibles", "Comp. Fibre", "Cout repar."]
+    print(f"{headers[0]:<35} | {headers[1]:<7} | {headers[2]:<9} | {headers[3]:<10} | {headers[4]:<10} | {headers[5]:<9} | {headers[6]:<11} | {headers[7]:<11}")
+    print("-" * 117)
     for row in tableau:
         sc = row["Scénario"][:34]
         inacc = str(row["Demandes inaccessibles"])
         tmoy = f"{row['Temps moyen (min)']:.1f}"
         rmoy = f"{row['Retard moyen (min)']:.1f}"
         rmax = f"{row['Retard max (min)']:.1f}"
+        sens = f"{row['Sites sensibles accessibles (%)']:.0f} %"
         comp = str(row["Composantes Fibre"])
         cout = f"{row['Coût réparation fibre']:.1f}"
-        print(f"{sc:<35} | {inacc:<7} | {tmoy:<9} | {rmoy:<10} | {rmax:<10} | {comp:<11} | {cout:<11}")
+        print(f"{sc:<35} | {inacc:<7} | {tmoy:<9} | {rmoy:<10} | {rmax:<10} | {sens:<9} | {comp:<11} | {cout:<11}")
 
     print(f"\n[OK] Resultats ecrits dans {resultat['fichier_md']}")
     return 0
@@ -143,12 +148,8 @@ def cmd_mst(chemin_donnees):
     afficher_titre(f"Module 4 - Fibre ACM : {chemin_donnees}")
     donnees = charger_jeu_donnees(chemin_donnees, valider=True)
     g_fibre = donnees["graphe_fibre"]
-    try:
-        from src import arbres
-        print("[INFO] Appel arbres.py (C)...")
-    except (ImportError, AttributeError):
-        print("[INFO] Module arbres.py (C) en attente.")
-        print(f"  Graphe fibre : {g_fibre.nombre_sommets()} sommets, {g_fibre.nombre_arcs()} aretes.")
+    from src import arbres
+    print(arbres.formater_comparaison_acm(g_fibre))
     return 0
 
 
@@ -156,30 +157,69 @@ def cmd_panne(chemin_donnees, nom_scenario=None):
     afficher_titre(f"Module 4 - Panne fibre : {chemin_donnees}")
     donnees = charger_jeu_donnees(chemin_donnees, valider=True)
     g_fibre = donnees["graphe_fibre"]
-    sc = nom_scenario or "panne_fibre_troncon_central"
-    g_perturbe = appliquer_scenario(g_fibre, donnees["scenarios"], nom_scenario=sc)
-    print(f"  Aretes avant panne : {g_fibre.nombre_arcs()}")
-    print(f"  Aretes apres panne : {g_perturbe.nombre_arcs()}")
+    regles = [r for r in donnees["scenarios"] if r["action"] == "fermer_fibre"]
+    # sans scenario precise on prend la premiere panne du fichier
+    sc = nom_scenario or (regles[0]["scenario"] if regles else None)
+    regles = [r for r in regles if r["scenario"] == sc]
+
+    if not regles:
+        print(f"[ERREUR] Aucune panne de fibre pour le scenario '{sc}'.")
+        return 1
+
+    from src import arbres
+    print(f"[INFO] Scenario : '{sc}'")
+    for r in regles:
+        try:
+            print(arbres.formater_panne(arbres.analyser_panne(g_fibre, r["u"], r["v"])))
+        except ValueError as e:
+            print(f"[ERREUR] {e}")
+            return 1
     return 0
 
 
-def cmd_absorbant(chemin_donnees):
-    afficher_titre("Module 3 - Circuits absorbants")
+def cmd_absorbant(chemin_donnees, source=None):
+    afficher_titre(f"Module 3 - Circuits absorbants : {chemin_donnees}")
+    from src import absorbants
+
     try:
-        from src import chemins
-        print("[INFO] Verification circuits absorbants (B/C)...")
-    except (ImportError, AttributeError):
-        print("[INFO] Modules B et C requis pour le module 3.")
+        # les couts negatifs sont autorises ici : c'est tout l'objet du module 3
+        donnees = charger_jeu_donnees(chemin_donnees, valider=True, autoriser_temps_negatifs=True)
+        g = donnees["graphe_routes"]
+        if source:
+            sources = [source]
+        else:
+            sources = [s for s, a in donnees["sites"].items() if a.get("type") == "caserne"] or g.sommets()[:1]
+        print(absorbants.formater_circuits_absorbants(absorbants.analyser_circuits_absorbants(g, sources)))
+    except (ValueError, KeyError) as e:
+        print(f"[ERREUR] {e}")
+        return 1
     return 0
 
 
-def cmd_bench():
-    afficher_titre("Benchmarks (C)")
-    try:
-        from src import benchmarks
-        print("[INFO] Lancement benchmarks (C)...")
-    except (ImportError, AttributeError):
-        print("[INFO] Module benchmarks.py (C) en attente.")
+def cmd_bench(graine):
+    afficher_titre(f"Benchmarks (graine={graine})")
+    from src import benchmarks
+    resultat = benchmarks.lancer_benchmarks(graine=graine)
+    print(benchmarks.formater_benchmarks(resultat["lignes"]))
+    print(f"\n[OK] Resultats ecrits dans {resultat['fichier_csv']}")
+    for fichier in benchmarks.tracer_graphiques(resultat["lignes"]):
+        print(f"[OK] Graphique ecrit dans {fichier}")
+    return 0
+
+
+def cmd_localite(graine):
+    afficher_titre(f"Experience de localite memoire (graine={graine})")
+    from src import benchmarks
+    resultat = benchmarks.experience_localite(graine=graine)
+    print(benchmarks.formater_localite(resultat["lignes"]))
+    print(f"\n[OK] Resultats ecrits dans {resultat['fichier_csv']}")
+    print(f"[OK] Graphique ecrit dans {benchmarks.tracer_localite(resultat['lignes'])}")
+    return 0
+
+
+def cmd_site(port):
+    from src import site_web
+    site_web.lancer(port)
     return 0
 
 
@@ -194,10 +234,12 @@ def main(arguments=None):
     parser.add_argument(
         "--operation",
         type=str,
-        choices=["valider", "accessibilite", "itineraires", "mst", "panne", "absorbant", "resilience", "bench"],
+        choices=["valider", "accessibilite", "itineraires", "mst", "panne", "absorbant", "resilience", "bench", "localite", "site"],
         default="resilience",
         help="Action a executer",
     )
+    parser.add_argument("--port", type=int, default=8000, help="Port du site (operation site)")
+    parser.add_argument("--source", type=str, default=None, help="Sommet de depart (operation absorbant)")
     parser.add_argument("--generer", action="store_true", help="Generer un graphe aleatoire")
     parser.add_argument("--sommets", type=int, default=100, help="Nombre de sommets")
     parser.add_argument("--densite", type=float, default=3.0, help="Densite m / n")
@@ -230,9 +272,13 @@ def main(arguments=None):
     elif args.operation == "panne":
         return cmd_panne(args.donnees, args.scenario)
     elif args.operation == "absorbant":
-        return cmd_absorbant(args.donnees)
+        return cmd_absorbant(args.donnees, args.source)
     elif args.operation == "bench":
-        return cmd_bench()
+        return cmd_bench(args.graine)
+    elif args.operation == "localite":
+        return cmd_localite(args.graine)
+    elif args.operation == "site":
+        return cmd_site(args.port)
 
     return 0
 

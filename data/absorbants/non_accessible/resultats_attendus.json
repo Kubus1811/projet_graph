@@ -1,0 +1,29 @@
+{
+  "circuit": ["S4", "S5", "S6"],
+  "cout_circuit": -2.0,
+  "diagonale_fw_negative": ["S4", "S5", "S6"],
+  "sources": {
+    "S1": {
+      "circuit_accessible": false,
+      "distances": {
+        "S1": 0.0,
+        "S2": 2.0,
+        "S3": 5.0,
+        "S4": "inf",
+        "S5": "inf",
+        "S6": "inf"
+      }
+    },
+    "S4": {
+      "circuit_accessible": true,
+      "distances": {
+        "S1": "inf",
+        "S2": "inf",
+        "S3": "-inf",
+        "S4": "-inf",
+        "S5": "-inf",
+        "S6": "-inf"
+      }
+    }
+  }
+}

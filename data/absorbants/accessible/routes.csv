@@ -1,0 +1,9 @@
+u,v,temps_normal,temps_pointe,statut
+S1,S2,1.0,1.0,ouvert
+S2,S3,2.0,2.0,ouvert
+S3,S4,3.0,3.0,ouvert
+S4,S2,-6.0,-6.0,ouvert
+S4,S5,1.0,1.0,ouvert
+S1,S6,4.0,4.0,ouvert
+S6,S7,2.0,2.0,ouvert
+S8,S1,1.0,1.0,ouvert

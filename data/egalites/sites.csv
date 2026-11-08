@@ -1,0 +1,6 @@
+id,nom,type,longitude,latitude
+A,Centre A,telecom,2.30,48.80
+B,Quartier B,quartier,2.40,48.90
+C,Quartier C,quartier,2.32,48.82
+D,Quartier D,quartier,2.34,48.84
+E,Quartier E,quartier,2.38,48.88

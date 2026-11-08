@@ -1,0 +1,1219 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Salle de crise Novapolis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Concept : la ville vue d'avion, la nuit. Les routes sont des rangees de lampadaires,
+   une route coupee s'eteint, et les secours partent en gyrophare sur le vrai itineraire. */
+:root {
+  color-scheme: dark;
+  --nuit: #0a1130;
+  --nuit-2: #111b45;
+  --trait: #2a3768;
+  --encre: #f1f3fc;
+  --encre-2: #b3bddf;
+  --sodium: #f4b860;
+  --gyro: #62cbff;
+  --retard: #ffe27a;
+  --coupure: #ff6a5c;
+  --secours: #72e6b6;
+  --titre: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --texte: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --chiffres: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--nuit); }
+body {
+  color: var(--encre);
+  font: 16px/1.45 var(--texte);
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 32px;
+  background-image: radial-gradient(90% 60% at 30% 25%, #17245c 0%, transparent 70%);
+  background-repeat: no-repeat;
+}
+button, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--gyro); outline-offset: 2px; }
+
+.tete { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px 28px; margin-bottom: 16px; }
+h1 { margin: 0; font: 800 clamp(44px, 7vw, 84px)/.86 var(--titre); letter-spacing: .01em; text-transform: uppercase; }
+h1 small { display: block; margin-bottom: 8px; font: 600 15px/1 var(--chiffres); letter-spacing: .14em; color: var(--sodium); }
+.etat-ville { display: grid; justify-items: end; gap: 4px; text-align: right; }
+.etat-ville span { font: 400 14px/1.3 var(--texte); color: var(--encre-2); }
+.etat-ville strong { font: 800 clamp(26px, 3.4vw, 40px)/1 var(--titre); letter-spacing: .03em; text-transform: uppercase; color: var(--secours); }
+.etat-ville[data-niveau="perturbation"] strong { color: var(--retard); }
+.etat-ville[data-niveau="crise"] strong { color: var(--coupure); }
+
+.commandes { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: end; margin-bottom: 16px; }
+.commandes label { display: grid; gap: 3px; font-size: 13px; color: var(--encre-2); min-width: 0; }
+select {
+  min-height: 40px; padding: 6px 10px; max-width: 100%;
+  background: var(--nuit-2); border: 1px solid var(--trait); border-radius: 3px;
+}
+.onglets { display: inline-flex; border: 1px solid var(--trait); border-radius: 3px; }
+.onglets button { min-height: 38px; padding: 4px 18px; border: 0; background: none; cursor: pointer; }
+.onglets button[aria-pressed="true"] { background: var(--sodium); color: var(--nuit); font-weight: 700; }
+.commandes label.case { display: flex; align-items: center; gap: 8px; min-height: 40px; color: var(--encre); font-size: 15px; }
+.case input { width: 18px; height: 18px; margin: 0; accent-color: var(--sodium); }
+.discret { min-height: 40px; padding: 4px 14px; cursor: pointer; background: none; border: 1px solid var(--trait); border-radius: 3px; }
+.discret:hover { border-color: var(--encre-2); }
+
+#erreur { margin-bottom: 12px; padding: 8px 12px; border: 1px solid var(--coupure); color: var(--coupure); }
+
+.salle { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(320px, 1fr); gap: 28px; align-items: start; }
+.plan { position: relative; min-width: 0; }
+svg#carte { display: block; width: 100%; height: auto; touch-action: manipulation; }
+.consigne { margin: 0 0 8px; font-size: 15px; color: var(--encre-2); max-width: 65ch; }
+
+.regie { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-top: 10px; padding-block: 10px; border-block: 1px solid var(--trait); }
+#lancer {
+  min-height: 46px; padding: 6px 20px; cursor: pointer; border: 0; border-radius: 3px;
+  background: var(--gyro); color: var(--nuit); font: 800 21px/1 var(--titre); letter-spacing: .05em; text-transform: uppercase;
+}
+#lancer:hover { background: var(--encre); }
+#horloge { font: 600 26px/1 var(--chiffres); font-variant-numeric: tabular-nums; }
+#arrivees { font-size: 15px; color: var(--encre-2); }
+
+.legende { display: flex; flex-wrap: wrap; gap: 5px 16px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 13.5px; color: var(--encre-2); }
+.legende li { display: flex; align-items: center; gap: 7px; }
+.rampe { width: 74px; height: 8px; background: linear-gradient(90deg, #62cbff, #ffe27a, #ff6a5c); }
+
+.bulletin { display: grid; gap: 22px; min-width: 0; }
+h2 { margin: 0 0 8px; font: 800 24px/1.05 var(--titre); letter-spacing: .03em; text-transform: uppercase; }
+.mesures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; margin: 0; }
+.mesure { padding-block: 9px; border-top: 1px solid var(--trait); }
+.mesure dt { font-size: 13.5px; color: var(--encre-2); }
+.mesure dd { margin: 1px 0 0; font: 600 25px/1.2 var(--chiffres); font-variant-numeric: tabular-nums; }
+.mesure.alerte dd { color: var(--coupure); }
+.liste { margin: 0; padding: 0; list-style: none; display: grid; }
+.coupure { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 34px; font-size: 15px; }
+.lien { padding: 2px 8px; min-height: 28px; background: none; border: 1px solid var(--trait); border-radius: 3px; cursor: pointer; font-size: 13px; }
+.lien:hover { border-color: var(--encre-2); }
+.vide { margin: 0; font-size: 15px; color: var(--encre-2); }
+.note { margin: -3px 0 6px; font-size: 14px; color: var(--encre-2); }
+.faible {
+  display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 0 8px; width: 100%; padding: 8px 0; cursor: pointer; text-align: left;
+  background: none; border: 0; border-top: 1px solid var(--trait);
+}
+.faible:hover strong { color: var(--sodium); }
+.faible .rang { grid-row: span 3; font: 600 16px/1.3 var(--chiffres); color: var(--encre-2); }
+.faible strong { font: 600 15px/1.3 var(--chiffres); overflow-wrap: anywhere; }
+.faible[aria-pressed="true"] strong::after { content: " · coupé"; color: var(--coupure); }
+.faible span.detail { font-size: 14px; color: var(--encre-2); }
+.barre { height: 4px; margin-top: 4px; background: var(--trait); }
+.barre i { display: block; height: 100%; background: var(--retard); }
+.barre.grave i { background: var(--coupure); }
+
+.rapport { margin-top: 30px; min-width: 0; }
+.defilement { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th { padding: 7px 14px 7px 0; text-align: left; font-weight: 700; font-size: 13px; color: var(--encre-2); border-bottom: 1px solid var(--encre-2); white-space: nowrap; }
+td { padding: 7px 14px 7px 0; border-bottom: 1px solid var(--trait); vertical-align: top; }
+td.num { font-family: var(--chiffres); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.chemin { min-width: 260px; font-size: 13.5px; color: var(--encre-2); }
+tr.choisie td { background: var(--nuit-2); }
+.choix { padding: 2px 8px; font: 600 13px/1.6 var(--chiffres); background: none; border: 1px solid var(--trait); border-radius: 3px; cursor: pointer; white-space: nowrap; }
+.choix:hover, .choix[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium); }
+.en-retard { color: var(--retard); font-weight: 600; }
+.etat-non { color: var(--coupure); font-weight: 700; white-space: nowrap; }
+footer { margin-top: 18px; font-size: 13.5px; color: var(--encre-2); max-width: 90ch; }
+
+#bulle {
+  position: fixed; z-index: 5; max-width: 270px; padding: 6px 10px; pointer-events: none;
+  background: var(--encre); color: var(--nuit); font-size: 13.5px; line-height: 1.3; border-radius: 3px;
+}
+
+/* lampadaires : un trait de points ronds au-dessus d'une lueur */
+.lueur { stroke: var(--sodium); stroke-width: 4; opacity: .1; stroke-linecap: round; }
+.lampes { stroke: var(--sodium); stroke-width: 2.3; stroke-linecap: round; stroke-dasharray: 0 7; opacity: .78; }
+.eteinte { stroke: var(--coupure); stroke-width: 2.6; stroke-dasharray: 3 7; stroke-linecap: round; }
+.croix { stroke: var(--coupure); stroke-width: 2.6; stroke-linecap: round; pointer-events: none; }
+.zone { stroke: transparent; stroke-width: 18; cursor: pointer; }
+.survol { stroke: transparent; stroke-width: 4; stroke-linecap: round; pointer-events: none; }
+.zone:hover + .survol { stroke: var(--encre); }
+.fibre-fin { stroke: var(--gyro); stroke-width: 1; opacity: .24; }
+.fibre-arbre { stroke: var(--gyro); stroke-width: 2.4; stroke-linecap: round; }
+.fibre-secours { stroke: var(--secours); stroke-width: 4.5; stroke-linecap: round; }
+.parcours { fill: none; stroke: var(--gyro); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; opacity: .72; pointer-events: none; }
+.parcours.detour { stroke: var(--retard); stroke-width: 3.2; opacity: .95; }
+.parcours.choisi { stroke-width: 4.5; opacity: 1; }
+.parcours.ancien { stroke: var(--encre-2); stroke-width: 2.4; stroke-dasharray: 2 7; opacity: .9; }
+.site-texte { font: 600 13px var(--chiffres); fill: var(--encre); paint-order: stroke; stroke: var(--nuit); stroke-width: 4px; pointer-events: none; }
+.equipement { fill: var(--encre); stroke: var(--nuit); stroke-width: 1.6; }
+.ecole { fill: var(--nuit); stroke: var(--encre); stroke-width: 1.8; }
+.demande { fill: none; stroke: var(--encre); stroke-width: 1.6; opacity: .75; pointer-events: none; }
+.sans-acces { fill: var(--coupure); }
+.onde { fill: none; stroke: var(--coupure); stroke-width: 2.5; pointer-events: none; animation: onde .9s ease-out forwards; transform-box: fill-box; transform-origin: center; }
+@keyframes onde { from { transform: scale(.25); opacity: 1; } to { transform: scale(4); opacity: 0; } }
+.arrivee { fill: none; stroke: var(--secours); stroke-width: 2.5; pointer-events: none; animation: onde .7s ease-out forwards; transform-box: fill-box; transform-origin: center; }
+.vehicule { fill: var(--encre); animation: gyro .36s steps(2) infinite; }
+@keyframes gyro { from { fill: var(--encre); } to { fill: var(--gyro); } }
+.vehicule.retarde { animation: none; fill: var(--retard); }
+.fantome { fill: none; stroke: var(--encre-2); stroke-width: 1.6; }
+
+@media (prefers-reduced-motion: reduce) {
+  .onde, .arrivee { animation: none; opacity: 0; }
+  .vehicule { animation: none; }
+}
+.labo { display: grid; gap: 10px; }
+.labo p { margin: 0; }
+.algos { display: flex; flex-wrap: wrap; gap: 6px; }
+.algos button { min-height: 34px; padding: 4px 10px; background: none; border: 1px solid var(--trait); border-radius: 3px; cursor: pointer; font: 600 13.5px/1 var(--chiffres); }
+.algos button[aria-pressed="true"] { border-color: var(--secours); color: var(--secours); }
+.resultat-chemin { font: 600 14px/1.45 var(--chiffres); overflow-wrap: anywhere; }
+.resultat-chemin b { color: var(--secours); }
+.accord { color: var(--secours); }
+.desaccord { color: var(--coupure); }
+.pastille { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.chemin-b { fill: none; stroke: var(--secours); stroke-width: 5; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+.explo-arc { stroke: var(--gyro); stroke-width: 2.4; stroke-linecap: round; pointer-events: none; }
+.explo-site { fill: var(--gyro); pointer-events: none; }
+.anneau-source { fill: none; stroke: var(--gyro); stroke-width: 3; pointer-events: none; }
+.anneau-cible { fill: none; stroke: var(--sodium); stroke-width: 3; pointer-events: none; }
+.cible-site { fill: transparent; cursor: pointer; }
+.sens { fill: var(--sodium); pointer-events: none; }
+.modifiee { stroke: #ff9d5c; stroke-width: 3.4; stroke-linecap: round; pointer-events: none; }
+.duree-texte { font: 600 11px var(--chiffres); fill: var(--encre); paint-order: stroke; stroke: var(--nuit); stroke-width: 3.5px; pointer-events: none; }
+.zoom { position: absolute; right: 0; top: 30px; display: flex; gap: 4px; z-index: 1; }
+.zoom button { min-width: 34px; min-height: 32px; background: var(--nuit-2); border: 1px solid var(--trait); border-radius: 3px; cursor: pointer; font: 600 15px/1 var(--chiffres); }
+.zoom button:hover { border-color: var(--encre-2); }
+svg#carte.glisse { cursor: grabbing; }
+.touches { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 13.5px; color: var(--encre-2); }
+.touches dt { white-space: nowrap; }
+kbd { display: inline-block; min-width: 22px; padding: 1px 6px; text-align: center; font: 600 12.5px/1.5 var(--chiffres); color: var(--encre); background: var(--nuit-2); border: 1px solid var(--trait); border-radius: 3px; }
+@media (max-width: 980px) {
+  .salle { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  body { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .etat-ville { justify-items: start; text-align: left; }
+  .commandes label:not(.case), .commandes select { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<header class="tete">
+  <h1><small id="sous-titre">Salle de crise</small>Novapolis</h1>
+  <div class="etat-ville" id="etat-ville" data-niveau="normal" aria-live="polite">
+    <strong id="etat-titre">Situation normale</strong>
+    <span id="etat-detail"></span>
+  </div>
+</header>
+
+<div class="commandes">
+  <label>Ville <select id="jeu"></select></label>
+  <label>Scénario <select id="scenario"></select></label>
+  <div class="onglets" role="group" aria-label="Réseau affiché">
+    <button type="button" id="couche-routes" aria-pressed="true">Routes</button>
+    <button type="button" id="couche-fibre" aria-pressed="false">Fibre</button>
+  </div>
+  <div class="onglets" role="group" aria-label="Analyse" id="outils">
+    <button type="button" data-outil="crise" aria-pressed="true">Crise</button>
+    <button type="button" data-outil="itineraire" aria-pressed="false">Itinéraire</button>
+    <button type="button" data-outil="acces" aria-pressed="false">Accessibilité</button>
+    <button type="button" data-outil="cfc" aria-pressed="false">Connexité</button>
+  </div>
+  <label class="case"><input type="checkbox" id="pointe"> Heure de pointe</label>
+  <label class="case"><input type="checkbox" id="fragilites"> Carte des fragilités</label>
+  <label class="case"><input type="checkbox" id="durees"> Durées des routes</label>
+  <button type="button" class="discret" id="reinitialiser">Tout rétablir</button>
+  <a class="discret" href="/" style="display:inline-flex;align-items:center;color:inherit;text-decoration:none">Revivre la nuit de l'orage</a>
+  <a class="discret" id="lien-autre" href="/routes" style="display:inline-flex;align-items:center;color:inherit;text-decoration:none">Routes (partie B)</a>
+</div>
+
+<div id="erreur" role="alert" hidden></div>
+
+<main class="salle">
+  <section class="plan" aria-label="Carte du réseau">
+    <p class="consigne" id="consigne"></p>
+    <div class="zoom" role="group" aria-label="Zoom de la carte">
+      <button type="button" id="zoom-plus" aria-label="Zoomer">+</button>
+      <button type="button" id="zoom-moins" aria-label="Dézoomer">−</button>
+      <button type="button" id="zoom-reset" aria-label="Recentrer la carte" title="Recentrer. Zoom : boutons, Ctrl + molette ou pincer le pavé tactile">⟲</button>
+    </div>
+    <svg id="carte" viewBox="0 0 800 800" role="group" aria-label="Plan de la ville, cliquer sur un tronçon pour le couper"></svg>
+    <div class="regie">
+      <button type="button" id="lancer">Lancer les secours</button>
+      <output id="horloge" aria-label="Temps écoulé dans la simulation">T+ 0,0 min</output>
+      <span id="arrivees"></span>
+    </div>
+    <ul class="legende" id="legende"></ul>
+  </section>
+
+  <aside class="bulletin">
+    <section id="labo" hidden>
+      <h2 id="titre-labo"></h2>
+      <div class="labo" id="labo-corps"></div>
+    </section>
+    <section>
+      <h2>Bilan</h2>
+      <dl class="mesures" id="mesures"></dl>
+    </section>
+    <section>
+      <h2>Coupures en cours</h2>
+      <ul class="liste" id="coupures"></ul>
+    </section>
+    <section>
+      <h2 id="titre-faibles">Points faibles</h2>
+      <p class="note" id="note-faibles"></p>
+      <ul class="liste" id="faibles"></ul>
+    </section>
+  </aside>
+</main>
+
+<section class="rapport" aria-label="Demandes d'intervention">
+  <h2>Interventions, les plus touchées d'abord</h2>
+  <div class="defilement"><table>
+    <thead><tr>
+      <th>Demande</th><th>Type</th><th>Priorité</th><th>Lieu</th><th>Caserne</th>
+      <th>Avant (min)</th><th>Après (min)</th><th>Retard (min)</th><th>Retard (%)</th><th>État</th><th>Chemin retenu</th>
+    </tr></thead>
+    <tbody id="lignes"></tbody>
+  </table></div>
+</section>
+
+<footer id="pied"></footer>
+<div id="bulle" hidden></div>
+
+<script>
+const etat = {
+  jeu: null, carte: null, resultat: null, faibles: null, couche: "routes", fragilites: false,
+  fermes: new Set(), pannes: new Set(), modifies: [], pointe: false,
+  demande: null, requete: 0, tempsMax: null, onde: null, pos: null, film: null,
+  outil: "crise", source: null, cible: null, algo: "dijkstra", chemin: null, connexite: null, explo: null,
+  durees: false, vue: null, base: null, vehiculeB: null, glisse: null, aide: true,
+};
+// page /routes : la fenetre de B (visu.py) dans le site, ouverte sur le petit graphe
+const PAGE_ROUTES = location.pathname === "/routes";
+const COULEURS_GROUPES = ["#62cbff", "#f4b860", "#72e6b6", "#e87ba4", "#b49cff", "#ffe27a", "#9fd36b", "#ff9d6b"];
+const $ = (id) => document.getElementById(id);
+const SVG = "http://www.w3.org/2000/svg";
+const calme = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function h(balise, attributs = {}, ...enfants) {
+  const el = document.createElement(balise);
+  for (const [k, v] of Object.entries(attributs)) {
+    if (k === "onclick") el.onclick = v; else if (v !== null && v !== undefined) el.setAttribute(k, v);
+  }
+  el.append(...enfants);
+  return el;
+}
+function s(balise, attributs = {}) {
+  const el = document.createElementNS(SVG, balise);
+  for (const [k, v] of Object.entries(attributs)) el.setAttribute(k, v);
+  return el;
+}
+const nb = (x, d = 1) => x === null || x === undefined ? "–" : x.toLocaleString("fr-FR", { maximumFractionDigits: d, minimumFractionDigits: 0 });
+const cleAxe = (u, v) => u < v ? `${u}|${v}` : `${v}|${u}`;
+const nomSite = (id) => etat.carte.sites.find((x) => x.id === id)?.nom ?? id;
+
+function melange(a, b, t) {
+  const c = (x, i) => parseInt(x.slice(i, i + 2), 16);
+  const canal = (i) => Math.round(c(a, i) + (c(b, i) - c(a, i)) * t).toString(16).padStart(2, "0");
+  return `#${canal(1)}${canal(3)}${canal(5)}`;
+}
+function rampeTemps(t) {
+  const x = Math.max(0, Math.min(1, t));
+  return x < .5 ? melange("#62cbff", "#ffe27a", x * 2) : melange("#ffe27a", "#ff6a5c", (x - .5) * 2);
+}
+
+async function api(url, options) {
+  const r = await fetch(url, options);
+  const donnees = await r.json();
+  if (!r.ok) throw new Error(donnees.erreur || "Le serveur a refusé la demande.");
+  return donnees;
+}
+function afficherErreur(e) {
+  $("erreur").hidden = !e;
+  $("erreur").textContent = e ? `${e.message} Si le problème continue, relancez le site puis rechargez la page.` : "";
+}
+
+async function initialiser() {
+  try {
+    const jeux = await api("/api/jeux");
+    for (const [nom, titre] of Object.entries(jeux)) $("jeu").append(h("option", { value: nom }, titre));
+    const jeu = PAGE_ROUTES ? "petit" : "realiste";
+    $("jeu").value = jeu;
+    if (PAGE_ROUTES) {
+      $("sous-titre").textContent = "Routes · partie B";
+      document.title = "Routes Novapolis";
+      $("lien-autre").href = "/salle";
+      $("lien-autre").textContent = "Salle de crise";
+      etat.durees = true;
+      $("durees").checked = true;
+      etat.outil = "itineraire";
+      for (const b of document.querySelectorAll("#outils button")) b.setAttribute("aria-pressed", String(b.dataset.outil === "itineraire"));
+    }
+    await chargerJeu(jeu);
+  } catch (e) { afficherErreur(e); }
+}
+
+async function chargerJeu(nom) {
+  arreterFilm();
+  const [carte, faibles] = await Promise.all([
+    api(`/api/carte?jeu=${encodeURIComponent(nom)}`),
+    api(`/api/points_faibles?jeu=${encodeURIComponent(nom)}`),
+  ]);
+  Object.assign(etat, { jeu: nom, carte, faibles, demande: null, pointe: false, modifies: [], tempsMax: null, source: null, cible: null, vue: null });
+  etat.fermes = new Set(); etat.pannes = new Set();
+  $("pointe").checked = false;
+  const liste = $("scenario");
+  liste.replaceChildren(h("option", { value: "" }, "Situation normale"));
+  for (const sc of carte.scenarios) liste.append(h("option", { value: sc.nom }, sc.nom.replaceAll("_", " ")));
+  liste.append(h("option", { value: "perso", hidden: "" }, "Situation personnalisée"));
+  liste.value = "";
+  await simuler();
+}
+
+async function simuler() {
+  arreterFilm();
+  const numero = ++etat.requete;
+  try {
+    const resultat = await poster("/api/simuler", { fibres_en_panne: [...etat.pannes].map((c) => c.split("|")) });
+    await analyser();
+    if (numero !== etat.requete) return;
+    etat.resultat = resultat;
+    // echelle fixee sur la situation normale : une coupure fait vraiment changer les couleurs
+    if (etat.tempsMax === null) {
+      etat.tempsMax = Math.max(1, ...Object.values(resultat.temps_sites).filter((t) => t !== null));
+    }
+    afficherErreur(null);
+    dessinerTout();
+  } catch (e) { afficherErreur(e); }
+}
+
+function situation() {
+  return {
+    jeu: etat.jeu,
+    routes_fermees: [...etat.fermes].map((c) => c.split("|")),
+    temps_modifies: etat.modifies,
+    pointe: etat.pointe,
+  };
+}
+function poster(url, extra = {}) {
+  return api(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...situation(), ...extra }) });
+}
+
+/* Les outils de la visualisation de B : itineraire entre deux sites, accessibilite, connexite. */
+async function analyser() {
+  arreterExploration();
+  etat.chemin = null;
+  etat.connexite = null;
+  if (etat.outil === "itineraire" && etat.source) {
+    etat.chemin = await poster("/api/chemin", { source: etat.source, cible: etat.cible, algo: etat.algo });
+  } else if (etat.outil === "acces" || etat.outil === "cfc") {
+    etat.connexite = await poster("/api/connexite");
+  }
+}
+async function rafraichirAnalyse() {
+  try { await analyser(); afficherErreur(null); } catch (e) { afficherErreur(e); }
+  dessinerTout();
+}
+function choisirOutil(outil) {
+  arreterFilm();
+  etat.outil = outil;
+  etat.demande = null;
+  for (const b of document.querySelectorAll("#outils button")) b.setAttribute("aria-pressed", String(b.dataset.outil === outil));
+  if (outil !== "crise") { etat.fragilites = false; $("fragilites").checked = false; if (etat.couche !== "routes") etat.couche = "routes"; }
+  $("couche-routes").setAttribute("aria-pressed", String(etat.couche === "routes"));
+  $("couche-fibre").setAttribute("aria-pressed", String(etat.couche === "fibre"));
+  rafraichirAnalyse();
+}
+function passerEnItineraire() {
+  if (etat.outil === "itineraire") return;
+  etat.outil = "itineraire";
+  etat.fragilites = false; $("fragilites").checked = false;
+  for (const b of document.querySelectorAll("#outils button")) b.setAttribute("aria-pressed", String(b.dataset.outil === "itineraire"));
+}
+function choisirSite(id) {
+  // comme B : clic gauche = depart ; sans clic droit (ecran tactile), le 2e clic donne l'arrivee
+  passerEnItineraire();
+  if (!etat.source || etat.cible) { etat.source = id; etat.cible = null; }
+  else if (id !== etat.source) etat.cible = id;
+  rafraichirAnalyse();
+}
+function choisirCible(id) {
+  // comme B : clic droit = arrivee
+  passerEnItineraire();
+  if (!etat.source) etat.source = id;
+  else if (id !== etat.source) etat.cible = id;
+  rafraichirAnalyse();
+}
+function arreterExploration() {
+  if (etat.explo) cancelAnimationFrame(etat.explo.raf);
+  etat.explo?.groupe.remove();
+  etat.explo = null;
+}
+function animerExploration() {
+  arreterExploration();
+  if (!etat.chemin) return;
+  const groupe = s("g", { "aria-hidden": "true" });
+  $("carte").append(groupe);
+  const ordre = etat.chemin.exploration, pos = etat.pos;
+  const duree = calme ? 0 : Math.min(6000, 1500 + ordre.length * 25);
+  etat.explo = { groupe, raf: 0, fait: 0, debut: performance.now() };
+  const image = (maintenant) => {
+    const n = duree ? Math.min(ordre.length, Math.floor((maintenant - etat.explo.debut) / duree * ordre.length)) : ordre.length;
+    for (; etat.explo.fait < n; etat.explo.fait += 1) {
+      const [sommet, pred] = ordre[etat.explo.fait];
+      if (pred) groupe.append(s("line", { class: "explo-arc", x1: pos[pred].x, y1: pos[pred].y, x2: pos[sommet].x, y2: pos[sommet].y }));
+      groupe.append(s("circle", { class: "explo-site", cx: pos[sommet].x, cy: pos[sommet].y, r: 3.5 }));
+    }
+    const zone = $("explo-etat");
+    if (zone) zone.textContent = `${etat.explo.fait} / ${ordre.length} sites fixés`;
+    if (n < ordre.length) etat.explo.raf = requestAnimationFrame(image);
+  };
+  etat.explo.raf = requestAnimationFrame(image);
+}
+
+function personnaliser() { $("scenario").value = "perso"; }
+function basculerRoute(u, v) {
+  const sens = [[u, v], [v, u]].filter(([a, b]) => etat.carte.routes.some((r) => r.u === a && r.v === b));
+  const cles = sens.map(([a, b]) => `${a}|${b}`);
+  if (cles.some((c) => etat.fermes.has(c))) cles.forEach((c) => etat.fermes.delete(c));
+  else { cles.forEach((c) => etat.fermes.add(c)); etat.onde = [u, v]; }
+  personnaliser();
+  simuler();
+}
+function basculerFibre(u, v) {
+  const c = cleAxe(u, v);
+  if (etat.pannes.has(c)) etat.pannes.delete(c);
+  else { etat.pannes.add(c); etat.onde = [u, v]; }
+  personnaliser();
+  simuler();
+}
+
+function projection() {
+  const xs = etat.carte.sites.map((x) => x.longitude), ys = etat.carte.sites.map((x) => x.latitude);
+  const lat0 = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const k = Math.cos(lat0 * Math.PI / 180);
+  const larg = (Math.max(...xs) - Math.min(...xs)) * k || 1, haut = (Math.max(...ys) - Math.min(...ys)) || 1;
+  // le cadre prend la forme de la ville
+  const W = 800, H = Math.min(980, Math.max(470, W * haut / larg));
+  const marge = 40, echelle = Math.min((W - 2 * marge) / larg, (H - 2 * marge) / haut);
+  const dx = (W - larg * echelle) / 2, dy = (H - haut * echelle) / 2;
+  const minX = Math.min(...xs), maxY = Math.max(...ys);
+  const pos = {};
+  for (const x of etat.carte.sites) {
+    pos[x.id] = { x: dx + (x.longitude - minX) * k * echelle, y: dy + (maxY - x.latitude) * echelle };
+  }
+  // 1 degre de latitude vaut environ 111 km
+  return { pos, W, H, pxParKm: echelle / 111 };
+}
+
+function bulle(el, texte) {
+  el.addEventListener("pointermove", (e) => {
+    const b = $("bulle");
+    b.textContent = typeof texte === "function" ? texte() : texte;
+    b.hidden = false;
+    b.style.left = `${Math.min(innerWidth - 280, e.clientX + 14)}px`;
+    b.style.top = `${e.clientY + 16}px`;
+  });
+  el.addEventListener("pointerleave", () => { $("bulle").hidden = true; });
+}
+
+function zoneCliquable(plan, pos, u, v, texte, action) {
+  const coord = { x1: pos[u].x, y1: pos[u].y, x2: pos[v].x, y2: pos[v].y };
+  const zone = s("line", { ...coord, class: "zone" });
+  zone.addEventListener("click", () => { $("bulle").hidden = true; action(); });
+  bulle(zone, texte);
+  plan.append(zone, s("line", { ...coord, class: "survol" }));
+}
+
+function dessinerCroix(plan, a, b) {
+  const x = (a.x + b.x) / 2, y = (a.y + b.y) / 2, r = 6;
+  plan.append(s("line", { class: "croix", x1: x - r, y1: y - r, x2: x + r, y2: y + r }));
+  plan.append(s("line", { class: "croix", x1: x - r, y1: y + r, x2: x + r, y2: y - r }));
+}
+
+function dessinerRoutes(plan, pos) {
+  const axes = new Map();
+  for (const r of etat.carte.routes) {
+    const c = cleAxe(r.u, r.v);
+    if (!axes.has(c)) axes.set(c, { u: r.u, v: r.v, sens: 0, temps: etat.pointe ? r.temps_pointe : r.temps_normal });
+    axes.get(c).sens += 1;
+  }
+  const impacts = new Map(etat.faibles.routes_toutes.map((i) => [cleAxe(i.u, i.v), i]));
+  const maxImpact = Math.max(1, ...etat.faibles.routes_toutes.map((i) => i.retard_total));
+  const zones = [];
+  // duree de chaque arc dans la situation courante (pointe, travaux)
+  const durees = dureesArcs(etat.pointe, etat.modifies);
+  const modifies = new Set(etat.modifies.map(([u, v]) => cleAxe(u, v)));
+  const surChemin = new Set();
+  const cheminChoisi = etat.outil === "itineraire" ? etat.chemin?.itineraire?.chemin
+    : etat.resultat.demandes.find((d) => d.id === etat.demande)?.chemin;
+  for (let i = 1; i < (cheminChoisi?.length ?? 0); i += 1) surChemin.add(cleAxe(cheminChoisi[i - 1], cheminChoisi[i]));
+  const peuDeSites = etat.carte.sites.length <= 20;
+
+  for (const [c, a] of axes) {
+    const ferme = etat.fermes.has(`${a.u}|${a.v}`) || etat.fermes.has(`${a.v}|${a.u}`);
+    const coord = { x1: pos[a.u].x, y1: pos[a.u].y, x2: pos[a.v].x, y2: pos[a.v].y };
+    const impact = impacts.get(c);
+    if (ferme) {
+      plan.append(s("line", { ...coord, class: "eteinte" }));
+      dessinerCroix(plan, pos[a.u], pos[a.v]);
+    } else if (etat.fragilites) {
+      const t = impact ? impact.retard_total / maxImpact : 0;
+      const couleur = impact ? melange("#ffe27a", "#ff6a5c", t) : "#3a4a84";
+      const epais = impact ? 2 + 5 * Math.sqrt(t) : 1.3;
+      plan.append(s("line", { ...coord, stroke: couleur, "stroke-width": epais, "stroke-linecap": "round" }));
+    } else {
+      plan.append(s("line", { ...coord, class: "lueur" }), s("line", { ...coord, class: "lampes" }));
+    }
+    if (!ferme && modifies.has(c)) plan.append(s("line", { ...coord, class: "modifiee" }));
+    if (!ferme && a.sens === 1) plan.append(flecheSensUnique(pos[a.u], pos[a.v]));
+    if (etat.durees && !ferme && (peuDeSites || surChemin.has(c))) {
+      const aller = durees.get(`${a.u}|${a.v}`), retour = durees.get(`${a.v}|${a.u}`);
+      const texte = retour === undefined || retour === aller ? nb(aller) : `${nb(aller)} / ${nb(retour)}`;
+      plan.append(texteDuree(pos[a.u], pos[a.v], texte));
+    }
+    a.temps = durees.get(`${a.u}|${a.v}`) ?? a.temps;
+    const sens = a.sens === 2 ? "double sens" : "sens unique";
+    const texteImpact = impact ? ` Si elle ferme : ${nb(impact.retard_total)} min de retard cumulé.` : "";
+    zones.push([a.u, a.v, `${a.u} – ${a.v} · ${nb(a.temps)} min, ${sens}.${texteImpact} ${ferme ? "Cliquer pour rouvrir." : "Cliquer pour couper."}`, () => basculerRoute(a.u, a.v)]);
+  }
+
+  if (etat.outil === "itineraire" && etat.chemin?.itineraire?.chemin) {
+    const ch = etat.chemin.itineraire.chemin;
+    plan.append(s("polyline", { class: "chemin-b", points: ch.map((i) => `${pos[i].x},${pos[i].y}`).join(" ") }));
+  }
+  if (!etat.fragilites && etat.outil === "crise") {
+    const tracer = (chemin, classe) => {
+      if (chemin) plan.append(s("polyline", { class: classe, points: chemin.map((i) => `${pos[i].x},${pos[i].y}`).join(" ") }));
+    };
+    for (const d of etat.resultat.demandes) {
+      if (etat.demande && d.id !== etat.demande) continue;
+      if (etat.demande && d.chemin_avant && d.retard) tracer(d.chemin_avant, "parcours ancien");
+      tracer(d.chemin, `parcours${d.retard > 0 ? " detour" : ""}${etat.demande ? " choisi" : ""}`);
+    }
+  }
+  for (const z of zones) zoneCliquable(plan, pos, ...z);
+}
+
+function flecheSensUnique(a, b) {
+  // fleche au milieu de l'arc, dans le sens de circulation
+  const dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l;
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+  return s("polygon", { class: "sens", points: `${mx + ux * 6},${my + uy * 6} ${mx - ux * 4 - uy * 4.5},${my - uy * 4 + ux * 4.5} ${mx - ux * 4 + uy * 4.5},${my - uy * 4 - ux * 4.5}` });
+}
+function texteDuree(a, b) {
+  const texte = arguments[2];
+  const dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1;
+  // decale sur le cote pour ne pas cacher la route
+  const t = s("text", { class: "duree-texte", x: (a.x + b.x) / 2 - dy / l * 10, y: (a.y + b.y) / 2 + dx / l * 10 + 4, "text-anchor": "middle" });
+  t.textContent = texte;
+  return t;
+}
+
+function dessinerFibre(plan, pos) {
+  const f = etat.resultat.fibre;
+  const dans = (liste) => new Set(liste.map((a) => cleAxe(a[0], a[1])));
+  const arbre = dans(f.restantes), secours = dans(f.raccordements);
+  const impacts = new Map(etat.faibles.fibre_toutes.map((i) => [cleAxe(i.u, i.v), i]));
+  const maxSurcout = Math.max(1, ...etat.faibles.fibre_toutes.map((i) => i.surcout ?? 0));
+
+  for (const t of etat.carte.fibre) {
+    const c = cleAxe(t.u, t.v), coord = { x1: pos[t.u].x, y1: pos[t.u].y, x2: pos[t.v].x, y2: pos[t.v].y };
+    const impact = impacts.get(c);
+    let role = "non utilisé";
+    if (etat.pannes.has(c)) {
+      role = "en panne";
+      plan.append(s("line", { ...coord, class: "eteinte" }));
+      dessinerCroix(plan, pos[t.u], pos[t.v]);
+    } else if (secours.has(c)) {
+      role = "raccordement de secours";
+      plan.append(s("line", { ...coord, class: "fibre-secours" }));
+    } else if (etat.fragilites && impact) {
+      role = "dans l'arbre couvrant";
+      const sansSecours = !impact.raccordable;
+      const r = (impact.surcout ?? 0) / maxSurcout;
+      plan.append(s("line", { ...coord, stroke: sansSecours ? "#ff6a5c" : melange("#62cbff", "#ffe27a", r), "stroke-width": sansSecours ? 6 : 2 + 2 * r, "stroke-linecap": "round" }));
+    } else if (arbre.has(c)) {
+      role = "dans l'arbre couvrant";
+      plan.append(s("line", { ...coord, class: "fibre-arbre" }));
+    } else {
+      plan.append(s("line", { ...coord, class: "fibre-fin" }));
+    }
+    const detail = impact && !impact.raccordable ? " Aucun tronçon de secours." : "";
+    zoneCliquable(plan, pos, t.u, t.v, `${t.u} – ${t.v} · ${nb(t.cout)} k€, ${role}.${detail} ${etat.pannes.has(c) ? "Cliquer pour réparer." : "Cliquer pour couper."}`, () => basculerFibre(t.u, t.v));
+  }
+}
+
+function placerEtiquette(p, texte, prises) {
+  const l = texte.length * 8.2, haut = 14;
+  for (const [dx, dy] of [[10, -8], [10, 17], [-10 - l, -8], [-10 - l, 17], [10, 5], [-10 - l, 5]]) {
+    const b = { x: p.x + dx, y: p.y + dy - haut, l, h: haut };
+    if (!prises.some((o) => b.x < o.x + o.l && o.x < b.x + b.l && b.y < o.y + o.h && o.y < b.y + b.h)) {
+      prises.push(b);
+      return { x: p.x + dx, y: p.y + dy };
+    }
+  }
+  return null;
+}
+
+function dessinerSites(plan, pos) {
+  const lieux = new Set(etat.resultat.demandes.filter((d) => !etat.demande || d.id === etat.demande).map((d) => d.origine));
+  const peu = etat.carte.sites.length <= 20;
+  const prises = [];
+  const temps = etat.resultat.temps_sites;
+
+  for (const x of etat.carte.sites) {
+    const p = pos[x.id], t = temps[x.id];
+    const delai = t === null ? "aucune caserne ne l'atteint" : `${nb(t)} min depuis la caserne la plus proche`;
+    let forme;
+    if (x.type === "caserne") forme = s("rect", { class: "equipement", x: p.x - 7, y: p.y - 7, width: 14, height: 14 });
+    else if (x.type === "hopital") forme = s("path", { class: "equipement", d: `M${p.x - 3},${p.y - 8}h6v5h5v6h-5v5h-6v-5h-5v-6h5z` });
+    else if (x.type === "telecom") forme = s("polygon", { class: "equipement", points: `${p.x},${p.y - 8} ${p.x + 8},${p.y + 6} ${p.x - 8},${p.y + 6}` });
+    else if (x.type === "ecole") forme = s("circle", { class: "ecole", cx: p.x, cy: p.y, r: 5 });
+    else if (t === null && etat.couche === "routes") forme = s("circle", { class: "sans-acces", cx: p.x, cy: p.y, r: peu ? 8 : 5 });
+    else {
+      const couleur = etat.couche === "routes" ? rampeTemps(t / etat.tempsMax) : "#b3bddf";
+      forme = s("circle", { fill: couleur, cx: p.x, cy: p.y, r: peu ? 7 : 4 });
+    }
+    const groupe = couleurGroupe(x.id);
+    if (groupe) {
+      // accessibilite : couleur de la caserne d'origine ; connexite : couleur de la composante
+      forme = s("circle", { fill: groupe, stroke: x.type === "quartier" ? "none" : "#f1f3fc", "stroke-width": 1.5, cx: p.x, cy: p.y, r: peu ? 8 : (x.type === "quartier" ? 4.5 : 6.5) });
+    }
+    bulle(forme, `${x.nom} (${x.id}) · ${delai}.`);
+    if (etat.couche === "routes" && etat.outil === "crise" && lieux.has(x.id)) plan.append(s("circle", { class: "demande", cx: p.x, cy: p.y, r: peu ? 12 : 8 }));
+    plan.append(forme);
+    if (etat.couche === "routes") {
+      if (etat.outil === "itineraire" && x.id === etat.source) plan.append(s("circle", { class: "anneau-source", cx: p.x, cy: p.y, r: peu ? 14 : 11 }));
+      if (etat.outil === "itineraire" && x.id === etat.cible) plan.append(s("circle", { class: "anneau-cible", cx: p.x, cy: p.y, r: peu ? 14 : 11 }));
+      const zone = s("circle", { class: "cible-site", cx: p.x, cy: p.y, r: peu ? 14 : 9 });
+      zone.addEventListener("click", () => { $("bulle").hidden = true; choisirSite(x.id); });
+      zone.addEventListener("contextmenu", (e) => { e.preventDefault(); $("bulle").hidden = true; choisirCible(x.id); });
+      bulle(zone, `${x.nom} (${x.id}) · ${delai}. Clic gauche : départ, clic droit : arrivée.`);
+      plan.append(zone);
+    }
+
+    const nomme = peu || (x.type !== "quartier" && x.type !== "ecole");
+    const place = nomme ? placerEtiquette(p, x.id, prises) : null;
+    if (place) {
+      const texte = s("text", { class: "site-texte", x: place.x, y: place.y });
+      texte.textContent = x.id;
+      plan.append(texte);
+    }
+  }
+}
+
+function couleurGroupe(id) {
+  const c = etat.connexite;
+  if (!c) return null;
+  if (etat.outil === "acces") {
+    const caserne = c.caserne_par_site[id];
+    return caserne ? COULEURS_GROUPES[c.casernes.indexOf(caserne) % COULEURS_GROUPES.length] : "#ff6a5c";
+  }
+  if (etat.outil === "cfc") {
+    const k = c.cfc.findIndex((comp) => comp.includes(id));
+    // la grande composante en neutre, les autres ressortent
+    return k === 0 ? "#b3bddf" : COULEURS_GROUPES[(k - 1) % COULEURS_GROUPES.length];
+  }
+  return null;
+}
+
+function dessinerLabo() {
+  const zone = $("labo"), corps = $("labo-corps");
+  zone.hidden = etat.outil === "crise";
+  if (zone.hidden) return;
+  const p = (texte, classe) => h("p", { class: classe || null }, texte);
+  const contenu = [];
+
+  if (etat.outil === "itineraire") {
+    $("titre-labo").textContent = "Itinéraire entre deux sites";
+    contenu.push(p("Cliquez un site de départ, puis un site d'arrivée. Les coupures et l'heure de pointe s'appliquent aussi. La longueur d'un trait n'est pas sa durée : seules les durées comptent (case « Durées des routes »).", "note"));
+    contenu.push(h("div", { class: "algos", role: "group", "aria-label": "Algorithme" },
+      ...[["dijkstra", "Dijkstra"], ["bellman_ford", "Bellman-Ford"], ["floyd_warshall", "Floyd-Warshall"]].map(([cle, nom]) =>
+        h("button", { type: "button", "aria-pressed": String(etat.algo === cle), onclick: () => { etat.algo = cle; rafraichirAnalyse(); } }, nom))));
+    const r = etat.chemin;
+    if (!etat.source) contenu.push(p("Aucun départ choisi."));
+    else if (!etat.cible) contenu.push(p(`Départ : ${etat.source}. Choisissez l'arrivée.`));
+    if (r?.itineraire) {
+      const it = r.itineraire;
+      if (!it.accessible || !it.chemin) contenu.push(p(`${r.source} → ${r.cible} : inaccessible.`, "desaccord"));
+      else {
+        const somme = it.poids.map((x) => nb(x)).join(" + ");
+        contenu.push(h("p", { class: "resultat-chemin" }, h("b", {}, `${nb(it.duree)} min`), ` en ${it.nb_arcs} arcs`, h("br"), `${somme} = ${nb(it.duree)}`, h("br"), it.chemin.join(" → ")));
+        if (it.duree_reference !== null && Math.abs(it.duree - it.duree_reference) > 1e-9) {
+          const retard = it.duree - it.duree_reference;
+          contenu.push(p(`Sans perturbation : ${nb(it.duree_reference)} min, soit ${retard > 0 ? "+" : ""}${nb(retard)} min (${retard > 0 ? "+" : ""}${nb(retard / it.duree_reference * 100, 0)} %).`, retard > 0 ? "desaccord" : null));
+        }
+        if (it.travaux.length) contenu.push(p(`${it.travaux.length} tronçon(s) en travaux sur le trajet.`, "note"));
+      }
+      const valeurs = Object.entries(it.comparaison);
+      const accord = valeurs.every(([, v]) => v === valeurs[0][1]);
+      contenu.push(p(valeurs.map(([a, v]) => `${a.replace("_", "-")} : ${v === null ? "inaccessible" : nb(v) + " min"}`).join(" · "), "note"));
+      contenu.push(p(accord ? "Les algorithmes de B donnent la même durée." : "Les algorithmes ne concordent pas.", accord ? "accord" : "desaccord"));
+    }
+    if (etat.aide) {
+      const touche = (k, texte) => [h("dt", {}, ...k.map((x) => h("kbd", {}, x))), h("dd", { style: "margin:0" }, texte)];
+      contenu.push(h("dl", { class: "touches" },
+        ...touche(["clic gauche"], "départ"), ...touche(["clic droit"], "arrivée"),
+        ...touche(["clic sur une route"], "la bloquer ou la rouvrir"),
+        ...touche(["1", "2", "3"], "Dijkstra, Bellman-Ford, Floyd-Warshall"),
+        ...touche(["S"], "scénario suivant"), ...touche(["W"], "durées des routes"),
+        ...touche(["M"], "mode suivant"), ...touche(["Espace"], "animer l'exploration"),
+        ...touche(["R"], "tout réinitialiser"), ...touche(["H"], "masquer cette aide")));
+    }
+    if (r) contenu.push(h("div", { class: "coupure" }, h("button", { type: "button", class: "lien", onclick: animerExploration }, "Animer l'exploration"), h("span", { id: "explo-etat" }, `${r.exploration.length} sites atteignables depuis ${r.source}`)));
+  } else if (etat.connexite) {
+    const c = etat.connexite, total = etat.carte.sites.length;
+    if (etat.outil === "acces") {
+      $("titre-labo").textContent = "Accessibilité depuis les casernes";
+      contenu.push(p("BFS lancé depuis toutes les casernes à la fois : chaque site prend la couleur de la caserne qui l'atteint en premier.", "note"));
+      contenu.push(h("dl", { class: "mesures" },
+        h("div", { class: c.non_atteignables.length ? "mesure alerte" : "mesure" }, h("dt", {}, "Sites atteignables"), h("dd", {}, `${total - c.non_atteignables.length} / ${total}`)),
+        h("div", { class: "mesure" }, h("dt", {}, "Sites sensibles atteints"), h("dd", {}, `${c.sensibles_accessibles} / ${c.sensibles_total}`))));
+      contenu.push(h("ul", { class: "liste" }, ...c.casernes.map((cas, i) => {
+        const n = Object.values(c.caserne_par_site).filter((x) => x === cas).length;
+        return h("li", { class: "coupure" }, h("span", {}, h("span", { class: "pastille", style: `background:${COULEURS_GROUPES[i % COULEURS_GROUPES.length]}` }), cas), `${n} sites`);
+      })));
+      if (c.non_atteignables.length) contenu.push(p(`Non atteignables : ${c.non_atteignables.join(", ")}`, "desaccord"));
+    } else {
+      $("titre-labo").textContent = "Connexité du réseau routier";
+      contenu.push(p("Accessible : une caserne peut y aller. Connexe : tout est relié si on oublie le sens des routes. Fortement connexe : on peut aller et revenir.", "note"));
+      contenu.push(h("dl", { class: "mesures" },
+        h("div", { class: "mesure" }, h("dt", {}, "Composantes connexes"), h("dd", {}, String(c.nb_composantes_connexes))),
+        h("div", { class: c.cfc.length > 1 ? "mesure alerte" : "mesure" }, h("dt", {}, "Composantes fortement connexes"), h("dd", {}, String(c.cfc.length)))));
+      if (c.cfc.length > 1) contenu.push(p(`Hors de la grande composante : ${c.cfc.slice(1).map((x) => x.join(", ")).join(" | ")}`, "desaccord"));
+      else contenu.push(p("Depuis n'importe quel site, on peut aller partout et revenir.", "accord"));
+      if (c.circuit_exemple) contenu.push(p(`Exemple de circuit orienté : ${c.circuit_exemple.join(" → ")}`, "note"));
+    }
+  }
+  corps.replaceChildren(...contenu);
+}
+
+function dessinerEchelle(plan, W, H, pxParKm) {
+  const options = [0.5, 1, 2, 5, 10];
+  const km = options.find((o) => o * pxParKm >= 70) ?? 10;
+  const larg = km * pxParKm, x = W - larg - 14, y = H - 16;
+  plan.append(s("path", { d: `M${x},${y - 5}v5h${larg}v-5`, fill: "none", stroke: "#b3bddf", "stroke-width": 1.4 }));
+  const t = s("text", { class: "site-texte", x: x + larg / 2, y: y - 9, "text-anchor": "middle" });
+  t.textContent = `${nb(km)} km`;
+  plan.append(t);
+}
+
+function dessinerCarte() {
+  const plan = $("carte"), { pos, W, H, pxParKm } = projection();
+  etat.pos = pos;
+  etat.base = { x: 0, y: 0, w: W, h: H };
+  if (!etat.vue) etat.vue = { ...etat.base };
+  appliquerVue();
+  plan.replaceChildren();
+  if (etat.couche === "routes") dessinerRoutes(plan, pos); else dessinerFibre(plan, pos);
+  dessinerSites(plan, pos);
+  dessinerEchelle(plan, W, H, pxParKm);
+
+  if (etat.onde && !calme) {
+    const [u, v] = etat.onde;
+    plan.append(s("circle", { class: "onde", cx: (pos[u].x + pos[v].x) / 2, cy: (pos[u].y + pos[v].y) / 2, r: 18 }));
+  }
+  etat.onde = null;
+}
+
+/* Zoom et deplacement de la vue, comme dans la fenetre pygame de B. */
+function appliquerVue() {
+  const v = etat.vue;
+  $("carte").setAttribute("viewBox", `${v.x} ${v.y} ${v.w} ${v.h}`);
+}
+function zoomer(facteur, cx, cy) {
+  const b = etat.base, v = etat.vue;
+  const w = Math.max(b.w / 8, Math.min(b.w, v.w / facteur));
+  const k = w / v.w;
+  cx = cx ?? v.x + v.w / 2; cy = cy ?? v.y + v.h / 2;
+  etat.vue = { x: cx - (cx - v.x) * k, y: cy - (cy - v.y) * k, w, h: v.h * k };
+  appliquerVue();
+}
+function pointCarte(e) {
+  const p = $("carte").createSVGPoint();
+  p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform($("carte").getScreenCTM().inverse());
+}
+$("carte").addEventListener("wheel", (e) => {
+  // sans Ctrl, la molette fait defiler la page ; pincer le pave tactile envoie ctrlKey
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  const p = pointCarte(e);
+  zoomer(e.deltaY < 0 ? 1.15 : 1 / 1.15, p.x, p.y);
+}, { passive: false });
+$("carte").addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || !etat.vue) return;
+  etat.glisse = { x: e.clientX, y: e.clientY, vue: { ...etat.vue }, actif: false };
+});
+addEventListener("pointermove", (e) => {
+  const g = etat.glisse;
+  if (!g) return;
+  const dx = e.clientX - g.x, dy = e.clientY - g.y;
+  if (!g.actif && Math.hypot(dx, dy) < 6) return;
+  g.actif = true;
+  $("carte").classList.add("glisse");
+  const k = g.vue.w / $("carte").getBoundingClientRect().width;
+  etat.vue = { ...g.vue, x: g.vue.x - dx * k, y: g.vue.y - dy * k };
+  appliquerVue();
+});
+addEventListener("pointerup", () => {
+  if (etat.glisse?.actif) {
+    // un glisser n'est pas un clic : on n'eteint pas la route sous la souris
+    const bloquer = (e) => { e.stopPropagation(); e.preventDefault(); };
+    $("carte").addEventListener("click", bloquer, { capture: true, once: true });
+    setTimeout(() => $("carte").removeEventListener("click", bloquer, { capture: true }), 0);
+  }
+  etat.glisse = null;
+  $("carte").classList.remove("glisse");
+});
+$("zoom-plus").onclick = () => zoomer(1.4);
+$("zoom-moins").onclick = () => zoomer(1 / 1.4);
+$("zoom-reset").onclick = () => { etat.vue = { ...etat.base }; appliquerVue(); };
+
+/* Le vehicule de B : il parcourt le chemin choisi a la vitesse de ses vrais temps. */
+function arreterVehiculeB() {
+  if (etat.vehiculeB) cancelAnimationFrame(etat.vehiculeB.raf);
+  etat.vehiculeB?.point.remove();
+  etat.vehiculeB = null;
+}
+function lancerVehiculeB() {
+  arreterVehiculeB();
+  const it = etat.outil === "itineraire" ? etat.chemin?.itineraire : null;
+  if (!it?.chemin || it.chemin.length < 2 || calme) return;
+  const cumul = [0];
+  it.poids.forEach((p, i) => cumul.push(cumul[i] + p));
+  const total = cumul[cumul.length - 1] || 1, pos = etat.pos;
+  const point = s("circle", { class: "vehicule", r: 6 });
+  $("carte").append(point);
+  etat.vehiculeB = { point, raf: 0, debut: performance.now() };
+  const image = (maintenant) => {
+    // 4 s de trajet puis une courte pause, en boucle
+    const t = ((maintenant - etat.vehiculeB.debut) % 4800) / 4000 * total;
+    let i = 1;
+    while (i < cumul.length - 1 && cumul[i] < t) i += 1;
+    const r = Math.min(1, (t - cumul[i - 1]) / ((cumul[i] - cumul[i - 1]) || 1));
+    const a = pos[it.chemin[i - 1]], b = pos[it.chemin[i]];
+    point.setAttribute("cx", a.x + (b.x - a.x) * r);
+    point.setAttribute("cy", a.y + (b.y - a.y) * r);
+    etat.vehiculeB.raf = requestAnimationFrame(image);
+  };
+  etat.vehiculeB.raf = requestAnimationFrame(image);
+}
+
+function dessinerLegende() {
+  const trait = (attributs) => {
+    const v = s("svg", { width: 28, height: 10, "aria-hidden": "true" });
+    v.append(s("line", { x1: 2, y1: 5, x2: 26, y2: 5, ...attributs }));
+    return v;
+  };
+  const fleche = () => {
+    const v = s("svg", { width: 28, height: 10, "aria-hidden": "true" });
+    v.append(s("polygon", { class: "sens", points: "20,5 10,0.5 10,9.5" }));
+    return v;
+  };
+  const routes = etat.fragilites
+    ? [[h("span", { class: "rampe", style: "background:linear-gradient(90deg,#ffe27a,#ff6a5c)" }), "Retard cumulé si la route ferme"], [trait({ class: "eteinte" }), "Route coupée"]]
+    : [[trait({ class: "lampes" }), "Route"], [trait({ class: "parcours", style: "opacity:1" }), "Itinéraire"], [trait({ class: "parcours detour" }), "Itinéraire retardé"], [trait({ class: "eteinte" }), "Route coupée"],
+       [fleche(), "Sens unique"], [trait({ class: "modifiee" }), "Durée modifiée (travaux)"]];
+  const fibre = etat.fragilites
+    ? [[trait({ stroke: "#ff6a5c", "stroke-width": 5 }), "Aucun tronçon de secours"], [h("span", { class: "rampe", style: "background:linear-gradient(90deg,#62cbff,#ffe27a)" }), "Surcoût de réparation"], [trait({ class: "fibre-secours" }), "Raccordement de secours"], [trait({ class: "eteinte" }), "Panne"]]
+    : [[trait({ class: "fibre-arbre" }), "Arbre couvrant"], [trait({ class: "fibre-fin", style: "opacity:.6" }), "Tronçon possible"], [trait({ class: "fibre-secours" }), "Raccordement de secours"], [trait({ class: "eteinte" }), "Panne"]];
+  const items = [...(etat.couche === "routes" ? routes : fibre)];
+  if (etat.couche === "routes") items.push([h("span", { class: "rampe" }), `Temps de réponse des quartiers : 0 à ${nb(etat.tempsMax, 0)} min et plus`]);
+  items.push(["■", "Caserne"], ["✚", "Hôpital"], ["▲", "Télécom"], ["○", "École"]);
+  $("legende").replaceChildren(...items.map(([icone, nom]) => h("li", {}, icone, nom)));
+  $("consigne").textContent = etat.couche === "routes"
+    ? ({ itineraire: "Cliquez un site de départ puis un site d'arrivée. Un clic sur une route la coupe toujours.",
+         acces: "Chaque site prend la couleur de la caserne qui l'atteint en premier. Coupez des routes pour voir l'effet.",
+         cfc: "Couleurs : composantes fortement connexes. La plus grande reste grise." }[etat.outil] ?? "Cliquez sur une route pour la bloquer, ou sur un lieu pour calculer un itinéraire.")
+    : "Cliquez sur un tronçon pour simuler une panne : la réparation la moins chère apparaît en vert.";
+}
+
+function dessinerBilan() {
+  const i = etat.resultat.indicateurs;
+  const mesure = (nom, valeur, alerte) => h("div", { class: `mesure${alerte ? " alerte" : ""}` }, h("dt", {}, nom), h("dd", {}, valeur));
+  const part = i.part_sites_sensibles, restantes = i.composantes_fibre_apres_reparation;
+  $("mesures").replaceChildren(
+    mesure("Demandes inaccessibles", `${i.inaccessibles} / ${i.total_demandes}`, i.inaccessibles > 0),
+    mesure("Sites sensibles accessibles", part === null ? "–" : `${nb(part * 100, 0)} %`, part !== null && part < 1),
+    mesure("Retard moyen", `${nb(i.retard_moyen)} min`),
+    mesure("Retard maximal", `${nb(i.retard_max)} min`),
+    mesure("Composantes de fibre après panne", `${i.composantes_fibre}`, i.composantes_fibre > 1),
+    mesure(restantes > 1 ? `Réparation : ${restantes} composantes restent` : "Coût de réparation",
+      restantes > 1 && i.cout_reparation === 0 ? "Impossible" : `${nb(i.cout_reparation)} k€`, restantes > 1),
+  );
+
+  const retardees = etat.resultat.demandes.filter((d) => d.retard > 0).length;
+  const crise = i.inaccessibles > 0 || restantes > 1;
+  const perturbation = retardees > 0 || i.composantes_fibre > 1;
+  const zone = $("etat-ville");
+  zone.dataset.niveau = crise ? "crise" : perturbation ? "perturbation" : "normal";
+  $("etat-titre").textContent = crise ? "Crise" : perturbation ? "Réseau perturbé" : "Situation normale";
+  const morceaux = [];
+  if (i.inaccessibles) morceaux.push(`${i.inaccessibles} demande(s) sans secours`);
+  if (retardees) morceaux.push(`${retardees} demande(s) retardée(s)`);
+  if (i.composantes_fibre > 1) morceaux.push(`fibre coupée en ${i.composantes_fibre}`);
+  $("etat-detail").textContent = morceaux.length ? morceaux.join(" · ") : `${i.total_demandes} demandes couvertes, fibre connectée`;
+}
+
+function dessinerCoupures() {
+  const lignes = [], vus = new Set();
+  const ligne = (texte, bouton, action) => h("li", { class: "coupure" }, texte, bouton ? h("button", { type: "button", class: "lien", onclick: action }, bouton) : "");
+  for (const c of etat.fermes) {
+    const [u, v] = c.split("|"), axe = cleAxe(u, v);
+    if (vus.has(axe)) continue;
+    vus.add(axe);
+    const double = etat.fermes.has(`${v}|${u}`);
+    lignes.push(ligne(`Route ${u} ${double ? "↔" : "→"} ${v}`, "Rouvrir", () => {
+      etat.fermes.delete(`${u}|${v}`); etat.fermes.delete(`${v}|${u}`); personnaliser(); simuler();
+    }));
+  }
+  for (const c of etat.pannes) {
+    const [u, v] = c.split("|");
+    lignes.push(ligne(`Fibre ${u} – ${v}`, "Réparer", () => { etat.pannes.delete(c); personnaliser(); simuler(); }));
+  }
+  for (const [u, v, t] of etat.modifies) lignes.push(ligne(`Travaux ${u} → ${v} : ${nb(t)} min`));
+  if (etat.pointe) lignes.push(ligne("Heure de pointe sur tout le réseau"));
+  $("coupures").replaceChildren(...(lignes.length ? lignes : [h("li", {}, h("p", { class: "vide" }, "Aucune. Toutes les lumières sont allumées."))]));
+}
+
+function dessinerFaibles() {
+  const f = etat.faibles, liste = $("faibles");
+  const carte = (rang, titre, detail, part, grave, actif, action) => h("li", {}, h("button", { type: "button", class: "faible", "aria-pressed": String(actif), onclick: action },
+    h("span", { class: "rang" }, String(rang)), h("strong", {}, titre), h("span", { class: "detail" }, detail),
+    h("div", { class: `barre${grave ? " grave" : ""}` }, h("i", { style: `width:${Math.round(part * 100)}%` }))));
+
+  if (etat.couche === "routes") {
+    $("titre-faibles").textContent = "Routes les plus critiques";
+    $("note-faibles").textContent = `${f.nb_axes_testes} axes coupés un par un, classés par retard cumulé.`;
+    const max = Math.max(1, ...f.routes.map((r) => r.retard_total));
+    liste.replaceChildren(...f.routes.map((r, i) => carte(i + 1, `${r.u} ↔ ${r.v}`,
+      r.inaccessibles ? `${r.inaccessibles} demande(s) sans secours, ${nb(r.retard_total)} min de retard` : `${r.demandes_retardees} demande(s) retardée(s), ${nb(r.retard_total)} min au total, jusqu'à +${nb(r.retard_max)} min`,
+      r.retard_total / max, r.inaccessibles > 0,
+      r.routes_fermees.every(([a, b]) => etat.fermes.has(`${a}|${b}`)),
+      () => basculerRoute(r.u, r.v))));
+    if (!f.routes.length) liste.replaceChildren(h("li", {}, h("p", { class: "vide" }, "Aucune coupure unique ne retarde une demande.")));
+  } else {
+    $("titre-faibles").textContent = "Fibre : tronçons les plus critiques";
+    $("note-faibles").textContent = `${f.nb_troncons_testes} tronçons de l'arbre coupés un par un.`;
+    const max = Math.max(1, ...f.fibre.map((t) => t.surcout ?? 0));
+    liste.replaceChildren(...f.fibre.map((t, i) => carte(i + 1, `${t.u} – ${t.v}`,
+      t.raccordable ? `Réparation ${nb(t.cout_reparation)} k€, surcoût ${nb(t.surcout)} k€` : "Aucun tronçon de secours : le réseau reste coupé",
+      t.raccordable ? t.surcout / max : 1, !t.raccordable,
+      etat.pannes.has(cleAxe(t.u, t.v)),
+      () => basculerFibre(t.u, t.v))));
+  }
+}
+
+function dessinerTableau() {
+  const poids = (d) => !d.accessible ? Infinity : (d.retard ?? 0);
+  const demandes = [...etat.resultat.demandes].sort((a, b) => poids(b) - poids(a) || a.id.localeCompare(b.id));
+  $("lignes").replaceChildren(...demandes.map((d) => {
+    const choisie = etat.demande === d.id, retarde = d.retard > 0;
+    return h("tr", { class: choisie ? "choisie" : null },
+      h("td", {}, h("button", { type: "button", class: "choix", "aria-pressed": String(choisie), onclick: () => {
+        etat.demande = choisie ? null : d.id;
+        etat.fragilites = false;
+        $("fragilites").checked = false;
+        if (etat.couche !== "routes") choisirCouche("routes"); else dessinerTout();
+        $("carte").scrollIntoView({ behavior: calme ? "auto" : "smooth", block: "center" });
+      } }, d.id)),
+      h("td", {}, d.type), h("td", {}, d.priorite), h("td", {}, nomSite(d.origine)), h("td", { class: "num" }, d.caserne ?? "–"),
+      h("td", { class: "num" }, nb(d.temps_avant)), h("td", { class: "num" }, nb(d.temps_apres)),
+      h("td", { class: `num${retarde ? " en-retard" : ""}` }, d.retard === null ? "–" : `${retarde ? "+" : ""}${nb(d.retard)}`),
+      h("td", { class: `num${retarde ? " en-retard" : ""}` }, d.retard_relatif === null ? "–" : `${retarde ? "+" : ""}${nb(d.retard_relatif * 100, 0)}`),
+      h("td", { class: d.accessible ? null : "etat-non" }, d.accessible ? "Accessible" : "⚠ Inaccessible"),
+      h("td", { class: "chemin" }, d.chemin ? `${d.chemin.join(" → ")} (${d.nb_arcs} arcs)` : "Aucun chemin"),
+    );
+  }));
+}
+
+function dessinerTout() {
+  arreterExploration();
+  arreterVehiculeB();
+  dessinerCarte();
+  dessinerLabo();
+  lancerVehiculeB();
+  dessinerLegende();
+  dessinerBilan();
+  dessinerCoupures();
+  dessinerFaibles();
+  dessinerTableau();
+  mettreRegieAuRepos();
+  $("pied").textContent = `Calculs : ${etat.resultat.moteur}, Kruskal et réparation de arbres.py, toujours sur une copie du réseau. Données synthétiques. Coûts de fibre en k€, estimés.`;
+}
+
+/* Le film des secours : chaque vehicule suit le chemin calcule, a la vitesse de ses vrais temps de trajet. */
+function dureesArcs(pointe, modifies) {
+  const durees = new Map();
+  for (const r of etat.carte.routes) durees.set(`${r.u}|${r.v}`, pointe ? r.temps_pointe : r.temps_normal);
+  for (const [u, v, t] of modifies) durees.set(`${u}|${v}`, t);
+  return durees;
+}
+function trajet(chemin, durees, total) {
+  const cumul = [0];
+  for (let i = 1; i < chemin.length; i += 1) cumul.push(cumul[i - 1] + (durees.get(`${chemin[i - 1]}|${chemin[i]}`) ?? 0));
+  return { chemin, cumul, total: total ?? cumul[cumul.length - 1] };
+}
+function position(t, tr) {
+  const pos = etat.pos, c = tr.cumul;
+  if (t >= c[c.length - 1]) return pos[tr.chemin[tr.chemin.length - 1]];
+  let i = 1;
+  while (c[i] < t) i += 1;
+  const r = (t - c[i - 1]) / ((c[i] - c[i - 1]) || 1);
+  const a = pos[tr.chemin[i - 1]], b = pos[tr.chemin[i]];
+  return { x: a.x + (b.x - a.x) * r, y: a.y + (b.y - a.y) * r };
+}
+
+function arreterFilm() {
+  if (etat.film) cancelAnimationFrame(etat.film.raf);
+  etat.film?.groupe.remove();
+  etat.film = null;
+  $("lancer").textContent = "Lancer les secours";
+}
+
+function mettreRegieAuRepos() {
+  const lignes = etat.resultat.demandes.filter((d) => d.accessible);
+  const maxT = Math.max(0, ...lignes.map((d) => d.temps_apres));
+  $("horloge").textContent = `T+ ${nb(maxT)} min`;
+  const manquent = etat.resultat.demandes.length - lignes.length;
+  $("arrivees").textContent = `${lignes.length} / ${etat.resultat.demandes.length} interventions, dernière arrivée à ${nb(maxT)} min${manquent ? `, ${manquent} sans secours` : ""}`;
+}
+
+function lancerFilm() {
+  if (etat.film) { arreterFilm(); mettreRegieAuRepos(); return; }
+  if (calme) { mettreRegieAuRepos(); return; }
+  if (etat.couche !== "routes" || etat.fragilites) {
+    etat.fragilites = false; $("fragilites").checked = false;
+    choisirCouche("routes");
+  }
+  const durees = dureesArcs(etat.pointe, etat.modifies), reference = dureesArcs(false, []);
+  const groupe = s("g", { "aria-hidden": "true" });
+  $("carte").append(groupe);
+  const vehicules = [];
+  const avecChemin = etat.resultat.demandes.filter((d) => d.chemin && (!etat.demande || d.id === etat.demande));
+  for (const d of avecChemin) {
+    const point = s("circle", { class: `vehicule${d.retard > 0 ? " retarde" : ""}`, r: 5 });
+    let fantome = null;
+    if (d.retard > 0 && d.chemin_avant) {
+      fantome = { tr: trajet(d.chemin_avant, reference), el: s("circle", { class: "fantome", r: 4 }) };
+      groupe.append(fantome.el);
+    }
+    groupe.append(point);
+    vehicules.push({ d, tr: trajet(d.chemin, durees), point, fantome, arrive: false });
+  }
+  const maxT = Math.max(1, ...vehicules.map((v) => v.tr.total));
+  const dureeReelle = Math.min(14000, 6000 + maxT * 60);
+  const debut = performance.now();
+  $("lancer").textContent = "Arrêter";
+  etat.film = { groupe, raf: 0 };
+
+  const image = (maintenant) => {
+    const t = Math.min(maxT, (maintenant - debut) / dureeReelle * maxT);
+    let arrives = 0;
+    for (const v of vehicules) {
+      const p = position(t, v.tr);
+      v.point.setAttribute("cx", p.x); v.point.setAttribute("cy", p.y);
+      if (v.fantome) {
+        const q = position(t, v.fantome.tr);
+        v.fantome.el.setAttribute("cx", q.x); v.fantome.el.setAttribute("cy", q.y);
+      }
+      if (t >= v.tr.total) {
+        arrives += 1;
+        if (!v.arrive) {
+          v.arrive = true;
+          groupe.append(s("circle", { class: "arrivee", cx: p.x, cy: p.y, r: 12 }));
+        }
+      }
+    }
+    $("horloge").textContent = `T+ ${nb(t)} min`;
+    $("arrivees").textContent = `${arrives} / ${etat.resultat.demandes.length} interventions arrivées`;
+    if (t < maxT) etat.film.raf = requestAnimationFrame(image);
+    else { $("lancer").textContent = "Relancer les secours"; etat.film.raf = 0; const g = groupe; etat.film = null; setTimeout(() => { if (!etat.film) g.remove(); }, 1200); mettreRegieAuRepos(); }
+  };
+  etat.film.raf = requestAnimationFrame(image);
+}
+
+function choisirCouche(couche) {
+  arreterFilm();
+  // les outils de B portent sur les routes : la fibre revient au mode crise
+  if (couche === "fibre" && etat.outil !== "crise") {
+    etat.outil = "crise";
+    for (const b of document.querySelectorAll("#outils button")) b.setAttribute("aria-pressed", String(b.dataset.outil === "crise"));
+  }
+  etat.couche = couche;
+  $("couche-routes").setAttribute("aria-pressed", String(couche === "routes"));
+  $("couche-fibre").setAttribute("aria-pressed", String(couche === "fibre"));
+  if (etat.resultat) dessinerTout();
+}
+
+$("jeu").onchange = (e) => chargerJeu(e.target.value).catch(afficherErreur);
+$("couche-routes").onclick = () => choisirCouche("routes");
+addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey || ["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || !etat.carte) return;
+  const touche = e.key.toLowerCase();
+  const algos = { 1: "dijkstra", 2: "bellman_ford", 3: "floyd_warshall" };
+  if (algos[touche]) {
+    etat.algo = algos[touche];
+    if (etat.outil !== "itineraire") choisirOutil("itineraire"); else rafraichirAnalyse();
+  } else if (touche === "s") {
+    // scenarios qui touchent les routes, comme la touche S de B
+    const noms = ["", ...etat.carte.scenarios.filter((sc) => sc.routes_fermees.length || sc.temps_modifies.length || sc.pointe).map((sc) => sc.nom)];
+    const i = noms.indexOf($("scenario").value);
+    $("scenario").value = noms[(i + 1) % noms.length];
+    $("scenario").dispatchEvent(new Event("change"));
+  } else if (touche === "w") {
+    $("durees").checked = !$("durees").checked;
+    $("durees").dispatchEvent(new Event("change"));
+  } else if (touche === "m") {
+    const outils = ["crise", "itineraire", "acces", "cfc"];
+    choisirOutil(outils[(outils.indexOf(etat.outil) + 1) % outils.length]);
+  } else if (touche === " ") {
+    e.preventDefault();
+    animerExploration();
+  } else if (touche === "r") {
+    etat.source = null; etat.cible = null; etat.vue = null;
+    $("reinitialiser").click();
+  } else if (touche === "h") {
+    etat.aide = !etat.aide;
+    dessinerLabo();
+  } else if (touche === "escape") {
+    etat.source = null; etat.cible = null;
+    rafraichirAnalyse();
+  }
+});
+$("durees").onchange = (e) => { etat.durees = e.target.checked; dessinerTout(); };
+for (const b of document.querySelectorAll("#outils button")) b.onclick = () => choisirOutil(b.dataset.outil);
+$("couche-fibre").onclick = () => choisirCouche("fibre");
+$("lancer").onclick = lancerFilm;
+$("pointe").onchange = (e) => { etat.pointe = e.target.checked; personnaliser(); simuler(); };
+$("fragilites").onchange = (e) => {
+  arreterFilm();
+  etat.fragilites = e.target.checked;
+  etat.demande = null;
+  if (etat.fragilites && etat.outil !== "crise") { choisirOutil("crise"); etat.fragilites = true; $("fragilites").checked = true; }
+  dessinerTout();
+};
+$("reinitialiser").onclick = () => {
+  etat.fermes = new Set(); etat.pannes = new Set(); etat.modifies = []; etat.pointe = false; etat.demande = null;
+  $("pointe").checked = false; $("scenario").value = "";
+  simuler();
+};
+$("scenario").onchange = (e) => {
+  const sc = etat.carte.scenarios.find((x) => x.nom === e.target.value);
+  etat.fermes = new Set((sc?.routes_fermees ?? []).map(([u, v]) => `${u}|${v}`));
+  etat.pannes = new Set((sc?.fibres_en_panne ?? []).map(([u, v]) => cleAxe(u, v)));
+  etat.modifies = sc?.temps_modifies ?? [];
+  etat.pointe = sc?.pointe ?? false;
+  etat.demande = null;
+  $("pointe").checked = etat.pointe;
+  if (sc?.fibres_en_panne.length && !sc.routes_fermees.length) choisirCouche("fibre");
+  else if (sc?.routes_fermees.length) choisirCouche("routes");
+  simuler();
+};
+initialiser();
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+u,v,cost,statut
+A,C,1.0,ouvert
+A,D,1.0,ouvert
+B,E,1.0,ouvert
+B,D,2.0,ouvert
+C,E,2.0,ouvert

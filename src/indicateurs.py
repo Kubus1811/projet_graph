@@ -1,6 +1,7 @@
 import csv
 import heapq
 from pathlib import Path
+from src.arbres import analyser_panne
 from src.graphe import Graphe
 
 
@@ -150,6 +151,43 @@ def evaluer_resilience_fibre(g_fibre):
     }
 
 
+def evaluer_panne_fibre(g_fibre, regles, nom_scenario):
+    pannes = [r for r in regles if r["action"] == "fermer_fibre" and r["scenario"] == nom_scenario]
+
+    if len(pannes) > 1:
+        raise ValueError(f"Scenario '{nom_scenario}' : plusieurs pannes simultanees non gerees.")
+
+    if not pannes:
+        return {
+            "nb_composantes": evaluer_resilience_fibre(g_fibre)["nb_composantes"],
+            "cout_reparation": 0.0,
+        }
+
+    res = analyser_panne(g_fibre, pannes[0]["u"], pannes[0]["v"])
+    return {
+        "nb_composantes": res["nb_composantes_panne"],
+        # cout infini : aucun troncon disponible ne permet de reparer
+        "cout_reparation": res["cout_reparation"] if res["raccordable"] else float("inf"),
+    }
+
+
+def bilan_routes(g_ref, g_scenario, demandes, casernes):
+    # indicateurs routes fournis par B (chemins.py) : meme calcul partout dans le projet
+    from src.chemins import comparer_scenario, indicateurs_routes
+
+    lignes = comparer_scenario(g_ref, g_scenario, demandes, casernes)
+    ind = indicateurs_routes(lignes, g_scenario, casernes)
+    temps = [l["cout_apres"] for l in lignes if l["accessible_apres"]]
+    return {
+        "inaccessibles": ind["nb_inaccessibles_apres"],
+        "temps_moyen": round(sum(temps) / len(temps), 2) if temps else 0.0,
+        # moyenne sur toutes les demandes accessibles, retards nuls compris (definition de B)
+        "retard_moyen": round(ind["retard_moyen"], 2),
+        "retard_max": round(ind["retard_max"], 2),
+        "sensibles": round(100 * ind["proportion_sensibles_accessibles"], 1),
+    }
+
+
 def orchestrer_module_5(donnees, dossier_resultats="resultats"):
     # calcule les 3 scenarios demandes : normal, axe ferme, panne fibre
     dossier = Path(dossier_resultats)
@@ -166,7 +204,7 @@ def orchestrer_module_5(donnees, dossier_resultats="resultats"):
         casernes = [g_routes_ref.sommets()[0]] if g_routes_ref.sommets() else []
 
     # 1. scenario normal
-    eval_routes_s1 = evaluer_resilience_demandes(g_routes_ref, casernes, demandes)
+    routes_s1 = bilan_routes(g_routes_ref, g_routes_ref, demandes, casernes)
     eval_fibre_s1 = evaluer_resilience_fibre(g_fibre_ref)
 
     # 2. fermeture d'un axe
@@ -177,20 +215,8 @@ def orchestrer_module_5(donnees, dossier_resultats="resultats"):
             break
 
     g_routes_s2 = appliquer_scenario(g_routes_ref, regles, nom_scenario=scen_route_nom)
-    eval_routes_s2 = evaluer_resilience_demandes(g_routes_s2, casernes, demandes)
+    routes_s2 = bilan_routes(g_routes_ref, g_routes_s2, demandes, casernes)
     eval_fibre_s2 = eval_fibre_s1
-
-    retards = []
-    for d_id, det_s1 in eval_routes_s1["details"].items():
-        det_s2 = eval_routes_s2["details"].get(d_id, {})
-        if det_s1["accessible"] and det_s2.get("accessible"):
-            t1 = det_s1["temps"]
-            t2 = det_s2["temps"]
-            if t2 > t1:
-                retards.append(t2 - t1)
-
-    retard_moyen = (sum(retards) / len(retards)) if retards else 0.0
-    retard_max = max(retards) if retards else 0.0
 
     # 3. panne fibre
     scen_fibre_nom = "panne_fibre_troncon_central"
@@ -199,54 +225,53 @@ def orchestrer_module_5(donnees, dossier_resultats="resultats"):
             scen_fibre_nom = r["scenario"]
             break
 
-    g_fibre_s3 = appliquer_scenario(g_fibre_ref, regles, nom_scenario=scen_fibre_nom)
-    eval_routes_s3 = eval_routes_s1
-    eval_fibre_s3 = evaluer_resilience_fibre(g_fibre_s3)
-
-    cout_reconnexion = 0.0
-    if eval_fibre_s3["nb_composantes"] > eval_fibre_s1["nb_composantes"]:
-        cout_reconnexion = 9.0
+    routes_s3 = routes_s1
+    eval_fibre_s3 = evaluer_panne_fibre(g_fibre_ref, regles, scen_fibre_nom)
 
     tableau_comparatif = [
         {
             "Scénario": "1. Situation normale",
-            "Demandes inaccessibles": eval_routes_s1["inaccessibles"],
-            "Temps moyen (min)": eval_routes_s1["temps_moyen"],
-            "Retard moyen (min)": 0.0,
-            "Retard max (min)": 0.0,
+            "Demandes inaccessibles": routes_s1["inaccessibles"],
+            "Temps moyen (min)": routes_s1["temps_moyen"],
+            "Retard moyen (min)": routes_s1["retard_moyen"],
+            "Retard max (min)": routes_s1["retard_max"],
+            "Sites sensibles accessibles (%)": routes_s1["sensibles"],
             "Composantes Fibre": eval_fibre_s1["nb_composantes"],
             "Coût réparation fibre": 0.0,
         },
         {
             "Scénario": f"2. Fermeture axe ({scen_route_nom})",
-            "Demandes inaccessibles": eval_routes_s2["inaccessibles"],
-            "Temps moyen (min)": eval_routes_s2["temps_moyen"],
-            "Retard moyen (min)": round(retard_moyen, 2),
-            "Retard max (min)": round(retard_max, 2),
+            "Demandes inaccessibles": routes_s2["inaccessibles"],
+            "Temps moyen (min)": routes_s2["temps_moyen"],
+            "Retard moyen (min)": routes_s2["retard_moyen"],
+            "Retard max (min)": routes_s2["retard_max"],
+            "Sites sensibles accessibles (%)": routes_s2["sensibles"],
             "Composantes Fibre": eval_fibre_s2["nb_composantes"],
             "Coût réparation fibre": 0.0,
         },
         {
             "Scénario": f"3. Panne fibre ({scen_fibre_nom})",
-            "Demandes inaccessibles": eval_routes_s3["inaccessibles"],
-            "Temps moyen (min)": eval_routes_s3["temps_moyen"],
-            "Retard moyen (min)": 0.0,
-            "Retard max (min)": 0.0,
+            "Demandes inaccessibles": routes_s3["inaccessibles"],
+            "Temps moyen (min)": routes_s3["temps_moyen"],
+            "Retard moyen (min)": routes_s3["retard_moyen"],
+            "Retard max (min)": routes_s3["retard_max"],
+            "Sites sensibles accessibles (%)": routes_s3["sensibles"],
             "Composantes Fibre": eval_fibre_s3["nb_composantes"],
-            "Coût réparation fibre": cout_reconnexion,
+            "Coût réparation fibre": eval_fibre_s3["cout_reparation"],
         },
     ]
 
     lignes_md = [
         "# Synthese de Resilience - Module 5",
         "",
-        "| Scenario | Demandes inaccessibles | Temps moyen (min) | Retard moyen (min) | Retard max (min) | Composantes Fibre | Cout reparation |",
-        "| :--- | :---: | :---: | :---: | :---: | :---: | :---: |",
+        "| Scenario | Demandes inaccessibles | Temps moyen (min) | Retard moyen (min) | Retard max (min) | Sites sensibles accessibles (%) | Composantes Fibre | Cout reparation |",
+        "| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
     ]
     for row in tableau_comparatif:
         lignes_md.append(
             f"| {row['Scénario']} | {row['Demandes inaccessibles']} | {row['Temps moyen (min)']} | "
-            f"{row['Retard moyen (min)']} | {row['Retard max (min)']} | {row['Composantes Fibre']} | {row['Coût réparation fibre']} |"
+            f"{row['Retard moyen (min)']} | {row['Retard max (min)']} | {row['Sites sensibles accessibles (%)']} | "
+            f"{row['Composantes Fibre']} | {row['Coût réparation fibre']} |"
         )
 
     f_md = dossier / "tableau_resilience.md"

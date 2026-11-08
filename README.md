@@ -69,11 +69,55 @@ Graine fixee donc le resultat est toujours le meme :
 python -m src.cli --generer --sommets 1000 --densite 3.0 --graine 42 --sortie data/genere
 ```
 
+### Calculer l'arbre couvrant de la fibre (Kruskal et Prim)
+```bash
+python -m src.cli --donnees data/petit --operation mst
+python -m src.cli --donnees data/egalites --operation mst
+```
+
+### Detecter les circuits absorbants (Module 3)
+Bellman-Ford depuis les casernes (ou `--source`), super-source pour un circuit hors de portee, diagonale de Floyd-Warshall. Les couts negatifs de ces jeux sont artificiels :
+```bash
+python -m src.cli --donnees data/absorbants/accessible --operation absorbant
+python -m src.cli --donnees data/absorbants/non_accessible --operation absorbant
+python -m src.cli --donnees data/absorbants/non_accessible --source S4 --operation absorbant
+```
+
+### Analyser une panne de fibre et sa reparation
+```bash
+python -m src.cli --donnees data/petit --operation panne
+python -m src.cli --donnees data/realiste --scenario panne_fibre_backbone_sud --operation panne
+```
+
+### Lancer les benchmarks
+Mesure Kruskal, Prim, BFS, DFS, Dijkstra et Bellman-Ford sur les memes graphes, et Floyd-Warshall jusqu'a 400 sommets. Ecrit les CSV et les graphiques dans `resultats/` (environ 30 s) :
+```bash
+python -m src.cli --operation bench
+python -m src.cli --operation localite
+```
+
+### Ouvrir le site web local
+Aucune installation en plus n'est necessaire :
+```bash
+python -m src.cli --operation site
+```
+`--port` change de port, Ctrl+C arrete le serveur.
+
+* http://127.0.0.1:8000 : **La nuit de l'orage**, histoire interactive. Elle commence par la ronde de controle (module 1 de B et verification que ses 3 algorithmes concordent). On joue le regulateur d'une nuit de crise et chaque decision est comparee a l'optimum calcule. L'histoire est inventee, les chiffres sont calcules par le programme.
+* http://127.0.0.1:8000/salle : **salle de crise**, mode libre. On coupe une route ou un troncon de fibre sur la carte et tout est recalcule. Quatre onglets :
+  * **Crise** : itineraires des demandes, indicateurs du module 5 et points faibles du reseau (test de resistance).
+  * **Itineraire** (visualisation de B) : clic sur un depart puis une arrivee, choix de Dijkstra, Bellman-Ford ou Floyd-Warshall, verification que les trois concordent et animation de l'exploration, vehicule qui parcourt le chemin.
+  * Sur toute la carte, comme dans `visu.py` de B : routes a sens unique flechees, durees modifiees en orange, case **Durees des routes** (la longueur d'un trait n'est pas sa duree), zoom avec les boutons, Ctrl + molette ou en pincant le pave tactile, deplacement en glissant.
+  * **Accessibilite** (module 1 de B) : chaque site prend la couleur de la caserne qui l'atteint en premier (BFS multi-sources).
+  * **Connexite** (module 1 de B) : composantes connexes et fortement connexes, exemple de circuit oriente.
+
+Technologies du site : ville isometrique dessinee en Canvas 2D sans bibliotheque, synthese vocale du navigateur (Web Speech) et sons generes (Web Audio) pour la radio, serveur Python standard (`http.server`).
+
 ---
 
 ## 3. Lancer les tests
 
-85 tests unitaires avec pytest :
+Tests unitaires avec pytest :
 ```bash
 pytest tests/ -v
 ```
@@ -84,7 +128,9 @@ pytest tests/ -v
 
 * `sites.csv` : `id,nom,type,longitude,latitude` (liste des sommets)
 * `routes.csv` : `u,v,temps_normal,temps_pointe,statut` (graphe oriente pour les voitures)
+  * statut `ferme` : la route est inutilisable ; statut `travaux` : la route reste praticable (meme regle dans tous les modules)
 * `fibre.csv` : `u,v,cost,statut` (graphe non oriente pour la fibre optique)
+  * un troncon `ferme` ou en `travaux` n'est jamais utilise pour une reparation
 * `demandes.csv` : `id,origine,type,priorite` (urgences a secourir)
 * `scenarios.csv` : `scenario,action,u,v,valeur` (fermer_route, modifier_temps, heure_pointe, fermer_fibre)
 
@@ -100,5 +146,13 @@ pytest tests/ -v
 * `src/visu.py` : visualisation pygame (positions et fleches calculees avec `pygame.math.Vector2`).
 * `src/indicateurs.py` : simulation des scenarios sur copie et module 5.
 * `src/cli.py` : script pour tout lancer en ligne de commande.
+* `src/arbres.py` : Union-Find, Kruskal, Prim, composantes, pannes et reparations de la fibre.
+* `src/benchmarks.py` : mesures, graphiques et experience sur la memoire.
+* `src/salle_de_crise.py` : simulation des coupures et recherche des points faibles.
+* `src/recit.py` : construit l'histoire et ses decisions a partir des calculs.
+* `src/site_web.py`, `src/recit.html` et `src/salle_de_crise.html` : serveur local et pages du site.
+* `data/egalites/` : deux arbres couvrants differents de meme cout (synthetique).
+* `data/absorbants/` : circuits absorbants accessible et non accessible, avec les reponses attendues (couts artificiels).
+* `data/tests_negatifs/` : petit circuit absorbant utilise par les tests de B.
 * `data/petit/` : petit graphe de 8 sommets avec les resultats attendus calcules a la main.
 * `data/realiste/` : ville synthetique de 120 sommets (Novapolis).
