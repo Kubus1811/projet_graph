@@ -96,7 +96,7 @@ def test_la_simulation_ne_modifie_jamais_le_jeu_de_base():
     assert simuler("petit")["indicateurs"]["retard_max"] == 0.0
 
 
-@pytest.mark.parametrize("nom", ["inconnu", "../petit", "", "tests_negatifs"])
+@pytest.mark.parametrize("nom", ["inconnu", "../petit", "", "absorbants"])
 def test_jeu_hors_de_la_liste_refuse(nom):
     with pytest.raises(ValueError):
         simuler(nom)

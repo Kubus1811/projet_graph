@@ -178,12 +178,15 @@ def test_bellman_ford_circuit_non_accessible():
     assert detecter_circuit_absorbant(graphe_circuit_absorbant())
 
 
-def test_jeu_tests_negatifs():
-    donnees = charger_jeu_donnees("data/tests_negatifs", autoriser_temps_negatifs=True)
+def test_jeu_circuit_absorbant_accessible():
+    # circuit S2 -> S3 -> S4 -> S2 de cout -1, accessible depuis S1
+    donnees = charger_jeu_donnees("data/absorbants/accessible", autoriser_temps_negatifs=True)
     g = donnees["graphe_routes"]
     dist, _ = bellman_ford(g, "S1")
     assert dist["S1"] == 0
-    assert all(dist[s] == float("-inf") for s in ("S2", "S3", "S4"))
+    assert all(dist[s] == float("-inf") for s in ("S2", "S3", "S4", "S5"))
+    assert dist["S6"] == 4 and dist["S7"] == 6
+    assert dist["S8"] == INF
 
 
 # ---------------------------------------------------------------- Floyd-Warshall

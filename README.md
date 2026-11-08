@@ -71,12 +71,16 @@ python -m src.cli --donnees data/realiste --scenario heure_pointe_generale --ope
 ### Visualisation graphique (pygame)
 Fenetre interactive : clic gauche = source, clic droit = cible, `1/2/3` = Dijkstra / Bellman-Ford / Floyd-Warshall,
 `S` = scenario suivant (route fermee en pointille rouge), `M` = mode (chemin, accessibilite, CFC, itineraires),
+`W` = afficher le poids de chaque arc (sa duree en minutes, le panneau detaille la somme du chemin),
 `Espace` = animation de l'exploration, molette = zoom, `H` = aide.
+La position des points vient des coordonnees GPS : la longueur d'une fleche n'est pas sa duree.
 ```bash
 python -m src.visu --donnees data/petit
 python -m src.visu --donnees data/realiste --source CAS_01 --cible QUA_007
+python -m src.visu --donnees data/petit --poids   # poids affiches des le depart
 # image PNG sans ouvrir de fenetre (pour le rapport)
 python -m src.visu --donnees data/petit --source C1 --cible Q1 --scenario fermeture_route_C1_Q1 --capture resultats/visu_petit_fermeture.png
+python -m src.visu --donnees data/petit --source C1 --cible Q1 --scenario fermeture_route_C1_Q1 --poids --capture resultats/visu_petit_poids.png
 ```
 
 ### Generer un gros graphe (ex: 1000 sommets)
@@ -224,7 +228,6 @@ Les perturbations s'appliquent toujours sur une copie : les donnees de reference
 * `src/site_web.py`, `src/recit.html` et `src/salle_de_crise.html` : serveur local et pages du site.
 * `data/egalites/` : deux arbres couvrants differents de meme cout (synthetique).
 * `data/absorbants/` : circuits absorbants accessible et non accessible, avec les reponses attendues (couts artificiels).
-* `data/tests_negatifs/` : petit circuit absorbant utilise par les tests de B.
 * `data/petit/` : petit graphe synthetique de 8 sommets avec les resultats attendus calcules a la main.
 * `data/realiste/` : ville synthetique de 120 sommets (Novapolis).
 * `data/genere/` : jeu synthetique de 1000 sommets, regenerable avec la graine 42.

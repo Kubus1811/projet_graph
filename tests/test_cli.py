@@ -103,7 +103,7 @@ def test_cli_fichier_mal_encode_nomme_le_fichier(capsys, tmp_path):
 
 
 def test_cli_couts_negatifs_refuses_avec_un_message(capsys):
-    code = main(["--donnees", str(DOSSIER_DATA / "tests_negatifs"), "--operation", "accessibilite"])
+    code = main(["--donnees", str(DOSSIER_DATA / "absorbants" / "accessible"), "--operation", "accessibilite"])
 
     assert code == 1
     assert "[ERREUR]" in capsys.readouterr().out
