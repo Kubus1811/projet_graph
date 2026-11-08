@@ -41,7 +41,7 @@ def construire_jeu_realiste(dossier_sortie="data/realiste"):
 
     ajouter("TEL_01", "Hub Telecom Central", "telecom", 50.0, 48.0)
     ajouter("TEL_02", "Datacenter Sud Industrie", "telecom", 20.0, 25.0)
-    ajouter("TEL_03", "Noeud Telecom Nord", "telecom", 72.0, 78.0)
+    ajouter("TEL_03", "Nœud Telecom Nord", "telecom", 72.0, 78.0)
     ajouter("TEL_04", "Centre Technique Est", "telecom", 85.0, 42.0)
 
     for i in range(1, 9):
@@ -49,6 +49,7 @@ def construire_jeu_realiste(dossier_sortie="data/realiste"):
         sy = round(20.0 + ((i % 4) * 20.0), 1)
         ajouter(f"ECO_0{i}", f"Groupe Scolaire {i}", "ecole", sx, sy)
 
+    prefixes_quartier = ["Place", "Rue", "Avenue", "Boulevard", "Quai", "Carrefour", "Square", "Allée"]
     q_idx = 1
     for gx in range(10):
         for gy in range(10):
@@ -57,11 +58,13 @@ def construire_jeu_realiste(dossier_sortie="data/realiste"):
             s_id = f"QUA_{str(q_idx).zfill(3)}"
             base_x = 10.0 + gx * 8.5 + rng.uniform(-1.5, 1.5)
             base_y = 10.0 + gy * 8.5 + rng.uniform(-1.5, 1.5)
-            ajouter(s_id, f"Quartier Q{q_idx}", "quartier", round(base_x, 1), round(base_y, 1))
+            # tire apres les coordonnees : changer cet ordre changerait tout le jeu
+            nom = f"{rng.choice(prefixes_quartier)} Q{q_idx}"
+            ajouter(s_id, nom, "quartier", round(base_x, 1), round(base_y, 1))
             q_idx += 1
 
     if q_idx == 101:
-        ajouter("QUA_101", "Esplanade des Fetes", "quartier", 50.0, 95.0)
+        ajouter("QUA_101", "Esplanade des Fêtes", "quartier", 50.0, 95.0)
 
     all_ids = list(sites.keys())
 
@@ -169,6 +172,10 @@ def construire_jeu_realiste(dossier_sortie="data/realiste"):
         {"scenario": "heure_pointe_generale", "action": "heure_pointe", "u": "", "v": "", "valeur": ""},
         {"scenario": "panne_fibre_backbone_sud", "action": "fermer_fibre", "u": "TEL_01", "v": "TEL_02", "valeur": ""},
         {"scenario": "travaux_boulevard_est", "action": "modifier_temps", "u": "CAS_04", "v": "TEL_04", "valeur": "35.0"},
+        # points faibles trouves par le test de resistance (--operation points_faibles)
+        {"scenario": "fermeture_axe_CAS_04_QUA_084", "action": "fermer_route", "u": "CAS_04", "v": "QUA_084", "valeur": ""},
+        {"scenario": "fermeture_axe_CAS_04_QUA_084", "action": "fermer_route", "u": "QUA_084", "v": "CAS_04", "valeur": ""},
+        {"scenario": "panne_fibre_CAS_04_QUA_084", "action": "fermer_fibre", "u": "CAS_04", "v": "QUA_084", "valeur": ""},
     ]
 
     for s in sites.values():

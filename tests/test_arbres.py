@@ -9,8 +9,10 @@ from src.arbres import (
     comparer_kruskal_prim,
     formater_comparaison_acm,
     formater_panne,
+    formater_pannes_simultanees,
     kruskal,
     prim,
+    reparer_pannes,
     trouver_composantes,
 )
 from src.cli import main
@@ -585,11 +587,22 @@ def test_cli_operation_panne(capsys):
     assert "C2 - E1 (cout 9.00)" in sortie
 
 
-def test_cli_panne_scenario_inconnu(capsys):
-    code = main(["--donnees", str(DOSSIER_DATA / "petit"), "--scenario", "inconnu", "--operation", "panne"])
+def test_cli_panne_scenario_sans_panne_de_fibre(capsys):
+    # le scenario existe, mais il ferme seulement une route
+    code = main(["--donnees", str(DOSSIER_DATA / "petit"), "--scenario", "fermeture_route_C1_Q1", "--operation", "panne"])
 
     assert code == 1
     assert "Aucune panne" in capsys.readouterr().out
+
+
+def test_pannes_simultanees_signale_un_raccordement_incomplet():
+    g = Graphe(oriente=False)
+    g.ajouter_arc("A", "B", 1.0)
+    g.ajouter_arc("B", "C", 1.0)
+
+    texte = formater_pannes_simultanees(reparer_pannes(g, [("A", "B"), ("B", "C")]))
+
+    assert "il reste 3 composantes" in texte
 
 
 def test_cli_panne_sans_scenario_dans_le_jeu(capsys):

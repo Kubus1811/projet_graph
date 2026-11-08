@@ -9,6 +9,7 @@ import pytest
 from src import salle_de_crise
 from src.arbres import analyser_panne, kruskal, reparer_pannes
 from src.graphe import Graphe
+from src.io_donnees import charger_jeu_donnees
 from src.salle_de_crise import carte, points_faibles, simuler
 from src.site_web import creer_serveur
 
@@ -464,6 +465,46 @@ def test_serveur_chemin_et_connexite(adresse):
 
     code, corps = lire(adresse + "/api/chemin", {"jeu": "petit", "source": "Z9"})
     assert code == 400
+
+
+def test_points_faibles_sur_un_jeu_charge_hors_du_site():
+    # la ligne de commande accepte n'importe quel dossier, pas seulement les jeux du site
+    jeu = salle_de_crise.preparer_jeu(charger_jeu_donnees("data/petit"))
+
+    res = salle_de_crise.points_faibles_du_jeu(jeu, limite=1)
+
+    # fermer C1 <-> Q1 : D1 et D4 perdent 6 min chacune
+    assert [(r["u"], r["v"], r["retard_total"]) for r in res["routes"]] == [("C1", "Q1", 12.0)]
+
+
+def test_preparer_jeu_retire_les_troncons_indisponibles(tmp_path):
+    (tmp_path / "sites.csv").write_text(
+        "id,nom,type,longitude,latitude\nC,A,caserne,2.3,48.8\nQ,B,quartier,2.4,48.9\n", encoding="utf-8")
+    (tmp_path / "routes.csv").write_text(
+        "u,v,temps_normal,temps_pointe,statut\nC,Q,1,1,ferme\nQ,C,1,1,travaux\n", encoding="utf-8")
+    (tmp_path / "fibre.csv").write_text("u,v,cost,statut\nC,Q,1,travaux\n", encoding="utf-8")
+
+    jeu = salle_de_crise.preparer_jeu(charger_jeu_donnees(tmp_path))
+
+    # route fermee retiree, route en travaux gardee ; fibre en travaux retiree
+    assert jeu["routes"].a_arc("C", "Q") is False
+    assert jeu["routes"].a_arc("Q", "C") is True
+    assert jeu["fibre"].a_arc("C", "Q") is False
+    assert jeu["casernes"] == ["C"]
+
+
+def test_comparer_reouvertures_recalcule_la_situation_complete():
+    jeu = salle_de_crise._charger("realiste")
+    axes = points_faibles("realiste", limite=3)["routes"]
+
+    res = salle_de_crise.comparer_reouvertures(jeu, axes)
+
+    # section 7.3 du rapport : rouvrir la route la plus critique seule n'est pas le meilleur choix
+    assert [(r["u"], r["v"], round(r["retard_restant"], 1), r["inaccessibles"]) for r in res] == [
+        ("CAS_01", "QUA_046", 118.6, 0),
+        ("CAS_04", "QUA_084", 137.9, 0),
+        ("QUA_083", "QUA_084", 189.4, 0),
+    ]
 
 
 def test_serveur_page_routes_de_b(adresse):

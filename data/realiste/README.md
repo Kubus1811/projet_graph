@@ -9,4 +9,10 @@
 * `routes.csv` : 431 arcs routiers pondérés en minutes (temps normal et temps de pointe), sens uniques et double sens.
 * `fibre.csv` : 163 tronçons de fibre optique non orientés avec coûts de génie civil.
 * `demandes.csv` : 25 demandes d'interventions réparties (incendie, accident, urgence médicale, fuite de gaz).
-* `scenarios.csv` : Scénarios documentés dont la fermeture du pont central et l'heure de pointe générale.
+* `scenarios.csv` : Scénarios documentés : fermeture du pont central, heure de pointe générale, panne de fibre, travaux, et les deux points faibles trouvés par le test de résistance (`fermeture_axe_CAS_04_QUA_084` et `panne_fibre_CAS_04_QUA_084`).
+
+## Régénération :
+Le script a une graine fixée et réécrit ces fichiers à l'identique :
+```bash
+python -m src.creer_jeu_realiste
+```

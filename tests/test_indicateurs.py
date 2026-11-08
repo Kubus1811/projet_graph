@@ -78,14 +78,26 @@ def test_panne_fibre_ignore_les_autres_scenarios():
     assert res == {"nb_composantes": 1, "cout_reparation": 0.0}
 
 
-def test_panne_fibre_refuse_plusieurs_pannes_simultanees():
+def test_panne_fibre_plusieurs_pannes_reparees_ensemble():
+    g = Graphe(oriente=False)
+    g.ajouter_arc("A", "B", 1.0)
+    g.ajouter_arc("B", "C", 1.0)
+    g.ajouter_arc("C", "D", 1.0)
+    g.ajouter_arc("A", "D", 5.0)
+    g.ajouter_arc("B", "D", 6.0)
+    regles = [regle_panne("p", "A", "B"), regle_panne("p", "C", "D")]
+
+    # l'arbre A-B-C-D perd 2 troncons : {A}, {B, C}, {D}, recolles par A-D puis B-D
+    assert evaluer_panne_fibre(g, regles, "p") == {"nb_composantes": 3, "cout_reparation": 11.0}
+
+
+def test_panne_fibre_plusieurs_pannes_sans_raccordement_cout_infini():
     g = Graphe(oriente=False)
     g.ajouter_arc("A", "B", 1.0)
     g.ajouter_arc("B", "C", 1.0)
     regles = [regle_panne("p", "A", "B"), regle_panne("p", "B", "C")]
 
-    with pytest.raises(ValueError):
-        evaluer_panne_fibre(g, regles, "p")
+    assert evaluer_panne_fibre(g, regles, "p") == {"nb_composantes": 3, "cout_reparation": float("inf")}
 
 
 def test_cli_resilience_affiche_le_vrai_cout(capsys, tmp_path, monkeypatch):
@@ -96,7 +108,73 @@ def test_cli_resilience_affiche_le_vrai_cout(capsys, tmp_path, monkeypatch):
 
     assert code == 0
     assert "9.0" in capsys.readouterr().out
-    assert (tmp_path / "resultats" / "tableau_resilience.csv").exists()
+    assert (tmp_path / "resultats" / "tableau_resilience_petit.csv").exists()
+
+
+def test_cli_resilience_un_fichier_par_jeu(tmp_path, monkeypatch):
+    # avant, chaque jeu ecrasait le tableau du precedent
+    monkeypatch.chdir(tmp_path)
+
+    for jeu in ("petit", "realiste"):
+        assert main(["--donnees", str(DOSSIER_DATA / jeu), "--operation", "resilience"]) == 0
+
+    dossier = tmp_path / "resultats"
+    assert "fermeture_route_C1_Q1" in (dossier / "tableau_resilience_petit.csv").read_text(encoding="utf-8")
+    assert "fermeture_pont_central" in (dossier / "tableau_resilience_realiste.csv").read_text(encoding="utf-8")
+
+
+def tableau_scenario(jeu, scenario, dossier_resultats):
+    donnees = charger_jeu_donnees(DOSSIER_DATA / jeu)
+    return orchestrer_module_5(donnees, dossier_resultats=dossier_resultats, nom_jeu=jeu, nom_scenario=scenario)["tableau"]
+
+
+def test_module_5_compare_le_scenario_demande_a_la_reference(tmp_path):
+    tableau = tableau_scenario("petit", "heure_pointe_generale", tmp_path)
+
+    assert len(tableau) == 2
+    assert "Situation normale" in tableau[0]["Scénario"]
+    assert "heure_pointe_generale" in tableau[1]["Scénario"]
+    # heure de pointe du petit jeu : 17 min de retard sur 4 demandes, 7 au pire
+    assert tableau[1]["Retard moyen (min)"] == 4.25
+    assert tableau[1]["Retard max (min)"] == 7.0
+
+
+def test_module_5_scenario_de_panne_fibre_laisse_les_routes(tmp_path):
+    ligne = tableau_scenario("petit", "panne_fibre_troncon_central", tmp_path)[1]
+
+    assert ligne["Composantes Fibre"] == 2
+    assert ligne["Coût réparation fibre"] == 9.0
+    assert ligne["Retard max (min)"] == 0.0
+
+
+def test_module_5_nom_de_scenario_sans_separateur_de_chemin(tmp_path):
+    donnees = charger_jeu_donnees(DOSSIER_DATA / "petit")
+    donnees["scenarios"] = [regle_route("a/b", "C1", "Q1")]
+
+    orchestrer_module_5(donnees, dossier_resultats=tmp_path, nom_jeu="petit", nom_scenario="a/b")
+
+    assert (tmp_path / "tableau_resilience_petit_a_b.csv").exists()
+
+
+def test_module_5_scenario_inconnu_refuse(tmp_path):
+    with pytest.raises(ValueError, match="nexiste_pas"):
+        tableau_scenario("petit", "nexiste_pas", tmp_path)
+
+
+def test_realiste_fermeture_de_l_axe_critique(tmp_path):
+    ligne = tableau_scenario("realiste", "fermeture_axe_CAS_04_QUA_084", tmp_path)[1]
+
+    # test de resistance : 117,5 min cumulees sur 25 demandes, 50,7 min au pire
+    assert ligne["Retard moyen (min)"] == 4.7
+    assert ligne["Retard max (min)"] == 50.7
+    assert ligne["Demandes inaccessibles"] == 0
+
+
+def test_realiste_panne_d_un_troncon_de_l_arbre(tmp_path):
+    ligne = tableau_scenario("realiste", "panne_fibre_CAS_04_QUA_084", tmp_path)[1]
+
+    assert ligne["Composantes Fibre"] == 2
+    assert ligne["Coût réparation fibre"] == 40.0
 
 
 def test_module_5_part_des_sites_sensibles(tmp_path):

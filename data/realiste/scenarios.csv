@@ -4,3 +4,6 @@ fermeture_pont_central,fermer_route,HOP_01,CAS_01,
 heure_pointe_generale,heure_pointe,,,
 panne_fibre_backbone_sud,fermer_fibre,TEL_01,TEL_02,
 travaux_boulevard_est,modifier_temps,CAS_04,TEL_04,35.0
+fermeture_axe_CAS_04_QUA_084,fermer_route,CAS_04,QUA_084,
+fermeture_axe_CAS_04_QUA_084,fermer_route,QUA_084,CAS_04,
+panne_fibre_CAS_04_QUA_084,fermer_fibre,CAS_04,QUA_084,

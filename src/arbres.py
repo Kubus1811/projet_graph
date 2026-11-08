@@ -359,11 +359,30 @@ def reparer_pannes(graphe, pannes):
         "restantes": restantes,
         "raccordements": raccordements,
         "cout_reparation": cout_reparation,
+        "nb_composantes_avant": arbre["nb_composantes"],
         "nb_composantes_panne": nb_composantes_panne,
         "nb_composantes_apres": uf.nombre_ensembles,
         "cout_arbre_avant": arbre["cout_total"],
         "cout_arbre_apres": sum(a[2] for a in restantes) + cout_reparation,
     }
+
+
+def formater_pannes_simultanees(resultat):
+    lignes = [f"Troncons de l'arbre coupes : {len(resultat['coupees'])}"]
+    for u, v, cout in resultat["coupees"]:
+        lignes.append(f"  {u} - {v} ({cout:.2f})")
+
+    lignes.append(f"Composantes apres les pannes : {resultat['nb_composantes_panne']}")
+    if resultat["raccordements"]:
+        lignes.append("Raccordements les moins chers :")
+        for u, v, cout in resultat["raccordements"]:
+            lignes.append(f"  {u} - {v} ({cout:.2f})")
+    if resultat["nb_composantes_apres"] > resultat["nb_composantes_avant"]:
+        lignes.append(f"Raccordement incomplet : il reste {resultat['nb_composantes_apres']} composantes.")
+
+    lignes.append(f"Cout de la reparation : {resultat['cout_reparation']:.2f}")
+    lignes.append(f"Cout de l'arbre : {resultat['cout_arbre_avant']:.2f} -> {resultat['cout_arbre_apres']:.2f}")
+    return "\n".join(lignes)
 
 
 def kruskal_etapes(graphe):

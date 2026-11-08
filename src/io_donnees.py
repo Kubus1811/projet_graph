@@ -1,10 +1,44 @@
 import csv
+import math
 from pathlib import Path
 from src.graphe import Graphe
+
+# statut vide autorise : le chargement le remplace par "ouvert"
+STATUTS_VALIDES = {"", "ouvert", "ferme", "fermé", "fermee", "fermée", "travaux"}
 
 
 class ErreurValidationDonnees(Exception):
     pass
+
+
+def _nombre_fini(texte):
+    # float() accepte aussi "nan" et "inf", qui ne sont ni des durees ni des couts
+    valeur = float(texte)
+    if not math.isfinite(valeur):
+        raise ValueError(texte)
+    return valeur
+
+
+def _erreurs_statut(nom_fichier, num_ligne, ligne):
+    statut = (ligne.get("statut") or "").strip().lower()
+    if statut in STATUTS_VALIDES:
+        return []
+    return [f"{nom_fichier} ligne {num_ligne} : statut inconnu '{statut}' (attendu : ouvert, ferme ou travaux)."]
+
+
+def _cle_arete(u, v):
+    # fibre non orientee : u - v et v - u designent le meme troncon
+    return (u, v) if u <= v else (v, u)
+
+
+def _lire_couples(chemin, non_oriente=False):
+    couples = set()
+    with open(chemin, mode="r", encoding="utf-8-sig") as f:
+        for ligne in csv.DictReader(f):
+            u = (ligne.get("u") or "").strip()
+            v = (ligne.get("v") or "").strip()
+            couples.add(_cle_arete(u, v) if non_oriente else (u, v))
+    return couples
 
 
 def valider_fichier_sites(chemin):
@@ -40,7 +74,7 @@ def valider_fichier_sites(chemin):
                 val = (ligne.get(coord) or "").strip()
                 if val:
                     try:
-                        float(val)
+                        _nombre_fini(val)
                     except ValueError:
                         erreurs.append(f"{chemin.name} ligne {num_ligne} : valeur non numérique '{val}' pour '{coord}'.")
 
@@ -54,6 +88,7 @@ def valider_fichier_routes(chemin, sites_valides=None, autoriser_temps_negatifs=
         return [f"Fichier manquant : {chemin}"]
 
     colonnes_attendues = {"u", "v", "temps_normal", "temps_pointe", "statut"}
+    arcs_vus = set()
 
     with open(chemin, mode="r", encoding="utf-8-sig") as f:
         lecteur = csv.DictReader(f)
@@ -81,14 +116,30 @@ def valider_fichier_routes(chemin, sites_valides=None, autoriser_temps_negatifs=
                 if v not in sites_valides:
                     erreurs.append(f"{chemin.name} ligne {num_ligne} : site '{v}' inconnu.")
 
+            # sans ce controle la derniere ligne ecraserait la premiere sans rien dire
+            if (u, v) in arcs_vus:
+                erreurs.append(f"{chemin.name} ligne {num_ligne} : arc en double '{u} -> {v}'.")
+            arcs_vus.add((u, v))
+
+            temps = {}
             for champ in ("temps_normal", "temps_pointe"):
                 val_str = (ligne.get(champ) or "").strip()
                 try:
-                    val = float(val_str)
+                    val = _nombre_fini(val_str)
+                    temps[champ] = val
                     if val < 0 and not autoriser_temps_negatifs:
                         erreurs.append(f"{chemin.name} ligne {num_ligne} : temps négatif {val} interdit pour '{champ}'.")
                 except ValueError:
                     erreurs.append(f"{chemin.name} ligne {num_ligne} : valeur non numérique '{val_str}' pour '{champ}'.")
+
+            # jeux metier seulement : les couts artificiels du module 3 ne sont pas des durees
+            if len(temps) == 2 and not autoriser_temps_negatifs and temps["temps_pointe"] < temps["temps_normal"]:
+                erreurs.append(
+                    f"{chemin.name} ligne {num_ligne} : temps_pointe {temps['temps_pointe']} "
+                    f"inférieur à temps_normal {temps['temps_normal']}."
+                )
+
+            erreurs.extend(_erreurs_statut(chemin.name, num_ligne, ligne))
 
     return erreurs
 
@@ -100,6 +151,7 @@ def valider_fichier_fibre(chemin, sites_valides=None):
         return [f"Fichier manquant : {chemin}"]
 
     colonnes_attendues = {"u", "v", "cost", "statut"}
+    aretes_vues = set()
 
     with open(chemin, mode="r", encoding="utf-8-sig") as f:
         lecteur = csv.DictReader(f)
@@ -126,13 +178,19 @@ def valider_fichier_fibre(chemin, sites_valides=None):
                 if v not in sites_valides:
                     erreurs.append(f"{chemin.name} ligne {num_ligne} : site '{v}' inconnu.")
 
+            if _cle_arete(u, v) in aretes_vues:
+                erreurs.append(f"{chemin.name} ligne {num_ligne} : tronçon en double '{u} - {v}'.")
+            aretes_vues.add(_cle_arete(u, v))
+
             val_str = (ligne.get("cost") or "").strip()
             try:
-                val = float(val_str)
+                val = _nombre_fini(val_str)
                 if val < 0:
                     erreurs.append(f"{chemin.name} ligne {num_ligne} : coût négatif {val} interdit pour la fibre.")
             except ValueError:
                 erreurs.append(f"{chemin.name} ligne {num_ligne} : valeur non numérique '{val_str}' pour 'cost'.")
+
+            erreurs.extend(_erreurs_statut(chemin.name, num_ligne, ligne))
 
     return erreurs
 
@@ -173,7 +231,7 @@ def valider_fichier_demandes(chemin, sites_valides=None):
     return erreurs
 
 
-def valider_fichier_scenarios(chemin, sites_valides=None):
+def valider_fichier_scenarios(chemin, sites_valides=None, arcs_routes=None, aretes_fibre=None):
     erreurs = []
     chemin = Path(chemin)
     if not chemin.exists():
@@ -194,6 +252,9 @@ def valider_fichier_scenarios(chemin, sites_valides=None):
             return erreurs
 
         for num_ligne, ligne in enumerate(lecteur, start=2):
+            if not (ligne.get("scenario") or "").strip():
+                erreurs.append(f"{chemin.name} ligne {num_ligne} : nom de scénario vide.")
+
             action = (ligne.get("action") or "").strip()
             if action not in actions_valides:
                 erreurs.append(f"{chemin.name} ligne {num_ligne} : action inconnue '{action}'.")
@@ -208,10 +269,19 @@ def valider_fichier_scenarios(chemin, sites_valides=None):
                     if v and v not in sites_valides:
                         erreurs.append(f"{chemin.name} ligne {num_ligne} : site '{v}' inconnu pour l'action '{action}'.")
 
+                # sans ces controles une faute de frappe donnerait un scenario sans aucun effet
+                if not u or not v:
+                    erreurs.append(f"{chemin.name} ligne {num_ligne} : 'u' et 'v' obligatoires pour l'action '{action}'.")
+                elif action == "fermer_fibre":
+                    if aretes_fibre is not None and _cle_arete(u, v) not in aretes_fibre:
+                        erreurs.append(f"{chemin.name} ligne {num_ligne} : tronçon de fibre '{u} - {v}' inexistant.")
+                elif arcs_routes is not None and (u, v) not in arcs_routes:
+                    erreurs.append(f"{chemin.name} ligne {num_ligne} : route '{u} -> {v}' inexistante.")
+
             if action == "modifier_temps":
                 val_str = (ligne.get("valeur") or "").strip()
                 try:
-                    val = float(val_str)
+                    val = _nombre_fini(val_str)
                     if val < 0:
                         erreurs.append(f"{chemin.name} ligne {num_ligne} : temps modifié négatif {val}.")
                 except ValueError:
@@ -232,14 +302,19 @@ def valider_donnees(dossier, autoriser_temps_negatifs=False, lever_exception=Fal
     if f_sites.exists() and not err_sites:
         sites_valides = set(charger_sites(f_sites).keys())
 
-    erreurs.extend(valider_fichier_routes(dossier / "routes.csv", sites_valides, autoriser_temps_negatifs))
-    erreurs.extend(valider_fichier_fibre(dossier / "fibre.csv", sites_valides))
+    err_routes = valider_fichier_routes(dossier / "routes.csv", sites_valides, autoriser_temps_negatifs)
+    err_fibre = valider_fichier_fibre(dossier / "fibre.csv", sites_valides)
+    erreurs.extend(err_routes)
+    erreurs.extend(err_fibre)
 
     if (dossier / "demandes.csv").exists():
         erreurs.extend(valider_fichier_demandes(dossier / "demandes.csv", sites_valides))
 
     if (dossier / "scenarios.csv").exists():
-        erreurs.extend(valider_fichier_scenarios(dossier / "scenarios.csv", sites_valides))
+        # un reseau deja en erreur ne sert pas de reference : pas d'erreurs en cascade
+        arcs_routes = _lire_couples(dossier / "routes.csv") if not err_routes else None
+        aretes_fibre = _lire_couples(dossier / "fibre.csv", non_oriente=True) if not err_fibre else None
+        erreurs.extend(valider_fichier_scenarios(dossier / "scenarios.csv", sites_valides, arcs_routes, aretes_fibre))
 
     est_valide = len(erreurs) == 0
     if not est_valide and lever_exception:
@@ -277,7 +352,7 @@ def charger_routes(chemin, sites=None):
             v = ligne["v"].strip()
             temps_normal = float(ligne["temps_normal"])
             temps_pointe = float(ligne.get("temps_pointe", temps_normal))
-            statut = (ligne.get("statut") or "ouvert").strip()
+            statut = (ligne.get("statut") or "").strip().lower() or "ouvert"
 
             g.ajouter_arc(
                 u, v,
@@ -301,7 +376,7 @@ def charger_fibre(chemin, sites=None):
             u = ligne["u"].strip()
             v = ligne["v"].strip()
             cost = float(ligne["cost"])
-            statut = (ligne.get("statut") or "ouvert").strip()
+            statut = (ligne.get("statut") or "").strip().lower() or "ouvert"
 
             g.ajouter_arc(
                 u, v,

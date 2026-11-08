@@ -127,7 +127,7 @@ def bellman_ford(graphe, source):
 # ---------------------------------------------------------------- B9 : Floyd-Warshall
 
 
-def floyd_warshall_matrices(graphe):
+def _floyd_warshall_brut(graphe):
     # L[i][j] distance, P[i][j] = predecesseur de j sur le chemin depuis i (indices)
     ids = graphe.sommets()
     n = len(ids)
@@ -163,6 +163,13 @@ def floyd_warshall_matrices(graphe):
                     Li[j] = nd
                     Pi[j] = Pk[j]
 
+    return ids, L, P
+
+
+def floyd_warshall_matrices(graphe):
+    ids, L, P = _floyd_warshall_brut(graphe)
+    n = len(ids)
+
     # circuits absorbants : L[k][k] < 0, et tout i -> k -> j devient -inf
     absorbants = [k for k in range(n) if L[k][k] < 0]
     for k in absorbants:
@@ -184,6 +191,13 @@ def floyd_warshall(graphe):
         dist[s] = {t: L[i][j] for j, t in enumerate(ids)}
         pred[s] = {t: (ids[P[i][j]] if P[i][j] is not None and i != j else None) for j, t in enumerate(ids)}
     return dist, pred
+
+
+def sommets_diagonale_negative(graphe):
+    # lue avant la propagation : un sommet qui peut seulement rejoindre un circuit et en
+    # revenir a aussi une distance -inf vers lui-meme, sans etre sur ce circuit
+    ids, L, _ = _floyd_warshall_brut(graphe)
+    return sorted(ids[k] for k in range(len(ids)) if L[k][k] < 0)
 
 
 def detecter_circuit_absorbant(graphe):

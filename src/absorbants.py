@@ -1,4 +1,4 @@
-from src.chemins import INF, MOINS_INF, bellman_ford_detail, floyd_warshall_matrices
+from src.chemins import INF, MOINS_INF, bellman_ford_detail, sommets_diagonale_negative
 
 SUPER_SOURCE = "__super_source__"
 # au-dela, floyd-warshall en O(n^3) devient trop lent en python
@@ -18,8 +18,7 @@ def sommets_sur_un_circuit(graphe):
     # diagonale de floyd-warshall : L[i][i] < 0 si i est sur un circuit absorbant
     if graphe.nombre_sommets() > TAILLE_MAX_FLOYD:
         return None
-    ids, L, _ = floyd_warshall_matrices(graphe)
-    return sorted(ids[k] for k in range(len(ids)) if L[k][k] < 0)
+    return sommets_diagonale_negative(graphe)
 
 
 def analyser_circuits_absorbants(graphe, sources):

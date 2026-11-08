@@ -1,3 +1,4 @@
+import csv
 from functools import lru_cache
 from pathlib import Path
 
@@ -30,16 +31,19 @@ def _sans_troncons_indisponibles(graphe, est_disponible):
     return g
 
 
-@lru_cache(maxsize=None)
-def _charger(nom):
-    if nom not in JEUX:
-        raise ValueError(f"Jeu de donnees inconnu : '{nom}'.")
-    donnees = charger_jeu_donnees(DOSSIER_DATA / nom)
+def preparer_jeu(donnees):
     # routes : meme regle que parcours.py (B), une route en travaux reste praticable, une route fermee non
     routes = _sans_troncons_indisponibles(donnees["graphe_routes"], arc_ouvert)
     fibre = _sans_troncons_indisponibles(donnees["graphe_fibre"], _fibre_disponible)
     casernes = [s for s, a in donnees["sites"].items() if a["type"] == "caserne"]
     return {**donnees, "routes": routes, "fibre": fibre, "casernes": casernes}
+
+
+@lru_cache(maxsize=None)
+def _charger(nom):
+    if nom not in JEUX:
+        raise ValueError(f"Jeu de donnees inconnu : '{nom}'.")
+    return preparer_jeu(charger_jeu_donnees(DOSSIER_DATA / nom))
 
 
 def moteur_itineraires():
@@ -184,8 +188,11 @@ def _axes_utilises(itineraires, routes):
 
 
 def points_faibles(nom, limite=5):
+    return points_faibles_du_jeu(_charger(nom), limite)
+
+
+def points_faibles_du_jeu(jeu, limite=5):
     # test de resistance : on coupe chaque troncon un par un et on classe les degats
-    jeu = _charger(nom)
     routes = jeu["routes"]
     reference = _itineraires(routes, jeu)
 
@@ -245,6 +252,65 @@ def points_faibles(nom, limite=5):
         "nb_axes_testes": len(_axes_utilises(reference, routes)),
         "nb_troncons_testes": len(impacts_fibre),
     }
+
+
+def comparer_reouvertures(jeu, axes):
+    # tous les axes sont coupes sauf celui qu'on rouvre : quel choix laisse le moins de retard ?
+    resultats = []
+    for choisi in axes:
+        fermes = [f for a in axes if a is not choisi for f in a["routes_fermees"]]
+        g = _reseau_perturbe(jeu["routes"], fermes)
+        lignes = chemins.comparer_scenario(jeu["routes"], g, jeu["demandes"], jeu["casernes"])
+        resultats.append({
+            "u": choisi["u"],
+            "v": choisi["v"],
+            "inaccessibles": sum(1 for l in lignes if not l["accessible_apres"]),
+            "retard_restant": sum(l["retard_absolu"] or 0 for l in lignes),
+        })
+    return sorted(resultats, key=lambda r: (r["inaccessibles"], r["retard_restant"]))
+
+
+def formater_points_faibles(res, reouvertures):
+    lignes = [
+        f"Axes routiers testes : {res['nb_axes_testes']}, troncons de fibre testes : {res['nb_troncons_testes']}",
+        "",
+        "--- Routes les plus critiques (coupees une par une) ---",
+        f"{'Route':<26} {'Inacc.':>6} {'Retardees':>9} {'Retard cumule':>13} {'Retard max':>10}",
+    ]
+    for r in res["routes"]:
+        route = f"{r['u']} <-> {r['v']}"
+        lignes.append(f"{route:<26} {r['inaccessibles']:>6} {r['demandes_retardees']:>9} "
+                      f"{r['retard_total']:>13.1f} {r['retard_max']:>10.1f}")
+
+    lignes += ["", "--- Troncons de fibre les plus fragiles ---"]
+    for t in res["fibre"]:
+        detail = f"reparation {t['cout_reparation']:.1f}, surcout {t['surcout']:.1f}" if t["raccordable"] else "aucun raccordement possible"
+        lignes.append(f"{t['u']} - {t['v']} (cout {t['cout']:.1f}) : {detail}")
+
+    if reouvertures:
+        lignes += ["", f"--- {len(reouvertures)} routes coupees en meme temps : laquelle rouvrir ? ---"]
+        for r in reouvertures:
+            lignes.append(f"Rouvrir {r['u']} <-> {r['v']} : retard cumule restant {r['retard_restant']:.1f} min, "
+                          f"{r['inaccessibles']} demande(s) inaccessible(s)")
+    return "\n".join(lignes)
+
+
+def ecrire_points_faibles(res, nom_jeu, dossier_resultats="resultats"):
+    dossier = Path(dossier_resultats)
+    dossier.mkdir(parents=True, exist_ok=True)
+    fichier = dossier / f"points_faibles_{nom_jeu}.csv"
+    champs = ["reseau", "u", "v", "inaccessibles", "demandes_retardees", "retard_total", "retard_max",
+              "cout", "raccordable", "cout_reparation", "surcout"]
+
+    def ligne(reseau, impact):
+        return {"reseau": reseau, **{k: round(x, 2) if isinstance(x, float) else x for k, x in impact.items()}}
+
+    with open(fichier, mode="w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=champs, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(ligne("route", r) for r in res["routes_toutes"])
+        writer.writerows(ligne("fibre", t) for t in res["fibre_toutes"])
+    return str(fichier)
 
 
 # ---------------------------------------------------------------- visualisation de B integree au site

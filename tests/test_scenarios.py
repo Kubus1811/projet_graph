@@ -38,6 +38,41 @@ def test_scenario_heure_pointe():
     assert g.poids_arc("A", "B") == 10.0
 
 
+def regle(action, u, v, valeur=""):
+    return {"scenario": "s", "action": action, "u": u, "v": v, "valeur": valeur}
+
+
+def test_fermer_fibre_ne_coupe_pas_la_route_du_meme_couple():
+    routes = Graphe(oriente=True)
+    routes.ajouter_arc("A", "B", 10.0)
+
+    assert appliquer_scenario(routes, [regle("fermer_fibre", "A", "B")], "s").a_arc("A", "B") is True
+
+
+def test_fermer_fibre_coupe_le_troncon_dans_les_deux_sens():
+    fibre = Graphe(oriente=False)
+    fibre.ajouter_arc("A", "B", 10.0)
+
+    apres = appliquer_scenario(fibre, [regle("fermer_fibre", "B", "A")], "s")
+
+    assert apres.a_arc("A", "B") is False
+    assert apres.a_arc("B", "A") is False
+
+
+def test_fermer_route_ne_coupe_pas_la_fibre_du_meme_couple():
+    fibre = Graphe(oriente=False)
+    fibre.ajouter_arc("A", "B", 10.0)
+
+    assert appliquer_scenario(fibre, [regle("fermer_route", "A", "B")], "s").a_arc("A", "B") is True
+
+
+def test_modifier_temps_ne_change_pas_le_cout_de_la_fibre():
+    fibre = Graphe(oriente=False)
+    fibre.ajouter_arc("A", "B", 10.0)
+
+    assert appliquer_scenario(fibre, [regle("modifier_temps", "A", "B", "99")], "s").poids_arc("A", "B") == 10.0
+
+
 def test_orchestration_module_5_petit_jeu(tmp_path):
     donnees = charger_jeu_donnees("data/petit")
     res = orchestrer_module_5(donnees, dossier_resultats=tmp_path)

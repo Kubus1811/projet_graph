@@ -2,9 +2,11 @@ import argparse
 import sys
 from pathlib import Path
 
-from src.io_donnees import valider_donnees, charger_jeu_donnees
-from src.indicateurs import appliquer_scenario, orchestrer_module_5
+from src.io_donnees import ErreurValidationDonnees, valider_donnees, charger_jeu_donnees
+from src.indicateurs import appliquer_scenario, orchestrer_module_5, verifier_scenario
 from src.generateur import generer_jeu_donnees
+
+OPERATIONS_SANS_SCENARIO = {"valider", "absorbant", "points_faibles", "bench", "localite", "site"}
 
 
 def afficher_titre(titre):
@@ -29,17 +31,8 @@ def cmd_valider(chemin_donnees):
 
 def cmd_resilience(chemin_donnees, nom_scenario=None):
     afficher_titre(f"Module 5 - Resilience : {chemin_donnees}")
-    try:
-        donnees = charger_jeu_donnees(chemin_donnees, valider=True)
-    except Exception as e:
-        print(f"[ERREUR] Chargement impossible : {e}")
-        return 1
-
-    try:
-        resultat = orchestrer_module_5(donnees)
-    except ValueError as e:
-        print(f"[ERREUR] {e}")
-        return 1
+    donnees = charger_jeu_donnees(chemin_donnees, valider=True)
+    resultat = orchestrer_module_5(donnees, nom_jeu=Path(chemin_donnees).name, nom_scenario=nom_scenario)
     tableau = resultat["tableau"]
 
     print("\n--- Tableau comparatif des scenarios ---")
@@ -63,11 +56,7 @@ def cmd_resilience(chemin_donnees, nom_scenario=None):
 
 def cmd_itineraires(chemin_donnees, nom_scenario=None):
     afficher_titre(f"Module 2 - Itineraires : {chemin_donnees}")
-    try:
-        donnees = charger_jeu_donnees(chemin_donnees, valider=True)
-    except Exception as e:
-        print(f"[ERREUR] {e}")
-        return 1
+    donnees = charger_jeu_donnees(chemin_donnees, valider=True)
 
     from src import chemins
 
@@ -90,6 +79,7 @@ def cmd_itineraires(chemin_donnees, nom_scenario=None):
         print(f"\n[INFO] Dijkstra / Bellman-Ford / Floyd-Warshall concordants : {'oui' if not diff else 'NON'}")
         return 0
 
+    verifier_scenario(donnees["scenarios"], nom_scenario)
     print(f"[INFO] Scenario applique : '{nom_scenario}' (sur une copie)")
     g_sc = appliquer_scenario(g_ref, donnees["scenarios"], nom_scenario=nom_scenario)
     lignes = chemins.comparer_scenario(g_ref, g_sc, donnees["demandes"], casernes)
@@ -121,6 +111,7 @@ def cmd_accessibilite(chemin_donnees, nom_scenario=None):
 
     g = donnees["graphe_routes"]
     if nom_scenario:
+        verifier_scenario(donnees["scenarios"], nom_scenario)
         print(f"[INFO] Scenario applique : '{nom_scenario}' (sur une copie)")
         g = appliquer_scenario(g, donnees["scenarios"], nom_scenario=nom_scenario)
 
@@ -144,10 +135,14 @@ def cmd_accessibilite(chemin_donnees, nom_scenario=None):
     return 0
 
 
-def cmd_mst(chemin_donnees):
+def cmd_mst(chemin_donnees, nom_scenario=None):
     afficher_titre(f"Module 4 - Fibre ACM : {chemin_donnees}")
     donnees = charger_jeu_donnees(chemin_donnees, valider=True)
     g_fibre = donnees["graphe_fibre"]
+    if nom_scenario:
+        verifier_scenario(donnees["scenarios"], nom_scenario)
+        print(f"[INFO] Scenario applique : '{nom_scenario}' (sur une copie)")
+        g_fibre = appliquer_scenario(g_fibre, donnees["scenarios"], nom_scenario=nom_scenario)
     from src import arbres
     print(arbres.formater_comparaison_acm(g_fibre))
     return 0
@@ -156,6 +151,8 @@ def cmd_mst(chemin_donnees):
 def cmd_panne(chemin_donnees, nom_scenario=None):
     afficher_titre(f"Module 4 - Panne fibre : {chemin_donnees}")
     donnees = charger_jeu_donnees(chemin_donnees, valider=True)
+    if nom_scenario:
+        verifier_scenario(donnees["scenarios"], nom_scenario)
     g_fibre = donnees["graphe_fibre"]
     regles = [r for r in donnees["scenarios"] if r["action"] == "fermer_fibre"]
     # sans scenario precise on prend la premiere panne du fichier
@@ -168,12 +165,12 @@ def cmd_panne(chemin_donnees, nom_scenario=None):
 
     from src import arbres
     print(f"[INFO] Scenario : '{sc}'")
-    for r in regles:
-        try:
-            print(arbres.formater_panne(arbres.analyser_panne(g_fibre, r["u"], r["v"])))
-        except ValueError as e:
-            print(f"[ERREUR] {e}")
-            return 1
+    if len(regles) == 1:
+        print(arbres.formater_panne(arbres.analyser_panne(g_fibre, regles[0]["u"], regles[0]["v"])))
+    else:
+        # pannes simultanees : une seule reparation commune, pas une analyse par troncon
+        pannes = [(r["u"], r["v"]) for r in regles]
+        print(arbres.formater_pannes_simultanees(arbres.reparer_pannes(g_fibre, pannes)))
     return 0
 
 
@@ -181,18 +178,28 @@ def cmd_absorbant(chemin_donnees, source=None):
     afficher_titre(f"Module 3 - Circuits absorbants : {chemin_donnees}")
     from src import absorbants
 
-    try:
-        # les couts negatifs sont autorises ici : c'est tout l'objet du module 3
-        donnees = charger_jeu_donnees(chemin_donnees, valider=True, autoriser_temps_negatifs=True)
-        g = donnees["graphe_routes"]
-        if source:
-            sources = [source]
-        else:
-            sources = [s for s, a in donnees["sites"].items() if a.get("type") == "caserne"] or g.sommets()[:1]
-        print(absorbants.formater_circuits_absorbants(absorbants.analyser_circuits_absorbants(g, sources)))
-    except (ValueError, KeyError) as e:
-        print(f"[ERREUR] {e}")
-        return 1
+    # les couts negatifs sont autorises ici : c'est tout l'objet du module 3
+    donnees = charger_jeu_donnees(chemin_donnees, valider=True, autoriser_temps_negatifs=True)
+    g = donnees["graphe_routes"]
+    if source:
+        sources = [source]
+    else:
+        sources = [s for s, a in donnees["sites"].items() if a.get("type") == "caserne"] or g.sommets()[:1]
+    print(absorbants.formater_circuits_absorbants(absorbants.analyser_circuits_absorbants(g, sources)))
+    return 0
+
+
+def cmd_points_faibles(chemin_donnees):
+    afficher_titre(f"Test de resistance : {chemin_donnees}")
+    from src import salle_de_crise
+
+    jeu = salle_de_crise.preparer_jeu(charger_jeu_donnees(chemin_donnees, valider=True))
+    res = salle_de_crise.points_faibles_du_jeu(jeu)
+    # les 3 routes les plus critiques coupees ensemble : section 7.3 du rapport
+    axes = res["routes"][:3]
+    reouvertures = salle_de_crise.comparer_reouvertures(jeu, axes) if len(axes) >= 2 else []
+    print(salle_de_crise.formater_points_faibles(res, reouvertures))
+    print(f"\n[OK] Resultats ecrits dans {salle_de_crise.ecrire_points_faibles(res, Path(chemin_donnees).name)}")
     return 0
 
 
@@ -223,31 +230,7 @@ def cmd_site(port):
     return 0
 
 
-def main(arguments=None):
-    parser = argparse.ArgumentParser(
-        prog="novapolis",
-        description="Novapolis Resilience - Outil d'analyse de reseau urbain",
-    )
-
-    parser.add_argument("--donnees", type=Path, default=Path("data/petit"), help="Dossier des CSV")
-    parser.add_argument("--scenario", type=str, default=None, help="Nom du scenario a appliquer")
-    parser.add_argument(
-        "--operation",
-        type=str,
-        choices=["valider", "accessibilite", "itineraires", "mst", "panne", "absorbant", "resilience", "bench", "localite", "site"],
-        default="resilience",
-        help="Action a executer",
-    )
-    parser.add_argument("--port", type=int, default=8000, help="Port du site (operation site)")
-    parser.add_argument("--source", type=str, default=None, help="Sommet de depart (operation absorbant)")
-    parser.add_argument("--generer", action="store_true", help="Generer un graphe aleatoire")
-    parser.add_argument("--sommets", type=int, default=100, help="Nombre de sommets")
-    parser.add_argument("--densite", type=float, default=3.0, help="Densite m / n")
-    parser.add_argument("--graine", type=int, default=42, help="Graine aleatoire")
-    parser.add_argument("--sortie", type=Path, default=Path("data/genere"), help="Dossier de sortie")
-
-    args = parser.parse_args(arguments)
-
+def lancer_operation(args):
     if args.generer:
         afficher_titre(f"Generation ({args.sommets} sommets, graine={args.graine})")
         info = generer_jeu_donnees(
@@ -268,11 +251,13 @@ def main(arguments=None):
     elif args.operation == "accessibilite":
         return cmd_accessibilite(args.donnees, args.scenario)
     elif args.operation == "mst":
-        return cmd_mst(args.donnees)
+        return cmd_mst(args.donnees, args.scenario)
     elif args.operation == "panne":
         return cmd_panne(args.donnees, args.scenario)
     elif args.operation == "absorbant":
         return cmd_absorbant(args.donnees, args.source)
+    elif args.operation == "points_faibles":
+        return cmd_points_faibles(args.donnees)
     elif args.operation == "bench":
         return cmd_bench(args.graine)
     elif args.operation == "localite":
@@ -281,6 +266,43 @@ def main(arguments=None):
         return cmd_site(args.port)
 
     return 0
+
+
+def main(arguments=None):
+    parser = argparse.ArgumentParser(
+        prog="novapolis",
+        description="Novapolis Resilience - Outil d'analyse de reseau urbain",
+    )
+
+    parser.add_argument("--donnees", type=Path, default=Path("data/petit"), help="Dossier des CSV")
+    parser.add_argument("--scenario", type=str, default=None, help="Nom du scenario a appliquer")
+    parser.add_argument(
+        "--operation",
+        type=str,
+        choices=["valider", "accessibilite", "itineraires", "mst", "panne", "absorbant", "resilience", "points_faibles", "bench", "localite", "site"],
+        default="resilience",
+        help="Action a executer",
+    )
+    parser.add_argument("--port", type=int, default=8000, help="Port du site (operation site)")
+    parser.add_argument("--source", type=str, default=None, help="Sommet de depart (operation absorbant)")
+    parser.add_argument("--generer", action="store_true", help="Generer un graphe aleatoire")
+    parser.add_argument("--sommets", type=int, default=100, help="Nombre de sommets")
+    parser.add_argument("--densite", type=float, default=3.0, help="Densite m / n")
+    parser.add_argument("--graine", type=int, default=42, help="Graine aleatoire")
+    parser.add_argument("--sortie", type=Path, default=Path("data/genere"), help="Dossier de sortie")
+
+    args = parser.parse_args(arguments)
+
+    if args.scenario and args.operation in OPERATIONS_SANS_SCENARIO:
+        print(f"[ERREUR] --scenario n'est pas utilise par l'operation '{args.operation}'.")
+        return 1
+
+    try:
+        return lancer_operation(args)
+    except (ErreurValidationDonnees, ValueError, KeyError) as e:
+        # e.args[0] : KeyError afficherait sinon son message entre guillemets
+        print(f"[ERREUR] {e.args[0] if e.args else e}")
+        return 1
 
 
 if __name__ == "__main__":

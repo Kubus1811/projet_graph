@@ -198,6 +198,17 @@ def test_super_source_d_accord_avec_la_force_brute():
         assert bool(sommets_sur_un_circuit(g)) is attendu
 
 
+def test_diagonale_ne_compte_pas_un_sommet_qui_touche_seulement_le_circuit():
+    # K1 <-> K2 coute -1 ; X ne revient a K1 que par un aller-retour a +200
+    g = Graphe(oriente=True)
+    g.ajouter_arc("K1", "K2", 1.0)
+    g.ajouter_arc("K2", "K1", -2.0)
+    g.ajouter_arc("K1", "X", 100.0)
+    g.ajouter_arc("X", "K1", 100.0)
+
+    assert sommets_sur_un_circuit(g) == ["K1", "K2"]
+
+
 def test_super_source_ne_modifie_pas_le_graphe():
     g = charger_routes("accessible")
     avant = g.arcs()

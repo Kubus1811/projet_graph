@@ -2,7 +2,29 @@ import filecmp
 import time
 from pathlib import Path
 from src.generateur import generer_jeu_donnees
+from src.creer_jeu_realiste import construire_jeu_realiste
 from src.io_donnees import valider_donnees, charger_jeu_donnees
+
+DOSSIER_DATA = Path(__file__).resolve().parent.parent / "data"
+FICHIERS_JEU = ("sites.csv", "routes.csv", "fibre.csv", "demandes.csv", "scenarios.csv")
+
+
+def contenu_du_jeu(dossier):
+    # par lignes : git peut changer les fins de ligne selon le systeme
+    return {f: (dossier / f).read_text(encoding="utf-8").splitlines() for f in FICHIERS_JEU}
+
+
+def test_jeu_genere_versionne_se_regenere_a_l_identique(tmp_path):
+    # meme commande que le README
+    generer_jeu_donnees(n_sommets=1000, densite=3.0, graine=42, dossier_sortie=tmp_path)
+
+    assert contenu_du_jeu(tmp_path) == contenu_du_jeu(DOSSIER_DATA / "genere")
+
+
+def test_jeu_realiste_versionne_se_regenere_a_l_identique(tmp_path):
+    construire_jeu_realiste(tmp_path)
+
+    assert contenu_du_jeu(tmp_path) == contenu_du_jeu(DOSSIER_DATA / "realiste")
 
 
 def test_generateur_reproductibilite_graine(tmp_path):
