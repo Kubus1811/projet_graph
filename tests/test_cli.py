@@ -89,6 +89,19 @@ def test_cli_dossier_absent_message_clair(operation, capsys, tmp_path):
     assert "[ERREUR]" in capsys.readouterr().out
 
 
+def test_cli_fichier_mal_encode_nomme_le_fichier(capsys, tmp_path):
+    jeu = tmp_path / "jeu"
+    shutil.copytree(DOSSIER_DATA / "petit", jeu)
+    chemin = jeu / "routes.csv"
+    chemin.write_bytes(chemin.read_bytes() + "C1,Q1,1,1,fermé\n".encode("latin-1"))
+
+    code = main(["--donnees", str(jeu), "--operation", "itineraires"])
+
+    sortie = capsys.readouterr().out
+    assert code == 1
+    assert "routes.csv" in sortie
+
+
 def test_cli_couts_negatifs_refuses_avec_un_message(capsys):
     code = main(["--donnees", str(DOSSIER_DATA / "tests_negatifs"), "--operation", "accessibilite"])
 

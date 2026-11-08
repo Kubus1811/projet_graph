@@ -231,6 +231,17 @@ def test_statut_de_route_normalise_au_chargement(tmp_path):
     assert routes.attributs_arc("S3", "S1")["statut"] == "ferme"
 
 
+@pytest.mark.parametrize("fichier,contenu", [
+    ("sites.csv", SITES_OK + "S4,École,ecole,2.3,48.8\n"),
+    ("routes.csv", ROUTES_OK + "S3,S1,5,8,fermé\n"),
+])
+def test_erreur_fichier_non_utf8(tmp_path, fichier, contenu):
+    ecrire_jeu(tmp_path)
+    (tmp_path / fichier).write_bytes(contenu.encode("latin-1"))
+
+    assert erreurs_de_la_ligne(tmp_path, fichier)
+
+
 def test_erreur_arc_en_double(tmp_path):
     ecrire_jeu(tmp_path, routes=ROUTES_OK + "S1,S2,99,120,ouvert\n")
 

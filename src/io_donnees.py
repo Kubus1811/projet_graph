@@ -31,6 +31,14 @@ def _cle_arete(u, v):
     return (u, v) if u <= v else (v, u)
 
 
+def _valider_lisible(valider, chemin, *options):
+    # un fichier mal encode devient une erreur de validation comme les autres
+    try:
+        return valider(chemin, *options)
+    except UnicodeDecodeError:
+        return [f"{Path(chemin).name} : fichier non encodé en UTF-8."]
+
+
 def _lire_couples(chemin, non_oriente=False):
     couples = set()
     with open(chemin, mode="r", encoding="utf-8-sig") as f:
@@ -295,26 +303,26 @@ def valider_donnees(dossier, autoriser_temps_negatifs=False, lever_exception=Fal
     erreurs = []
 
     f_sites = dossier / "sites.csv"
-    err_sites = valider_fichier_sites(f_sites)
+    err_sites = _valider_lisible(valider_fichier_sites, f_sites)
     erreurs.extend(err_sites)
 
     sites_valides = set()
     if f_sites.exists() and not err_sites:
         sites_valides = set(charger_sites(f_sites).keys())
 
-    err_routes = valider_fichier_routes(dossier / "routes.csv", sites_valides, autoriser_temps_negatifs)
-    err_fibre = valider_fichier_fibre(dossier / "fibre.csv", sites_valides)
+    err_routes = _valider_lisible(valider_fichier_routes, dossier / "routes.csv", sites_valides, autoriser_temps_negatifs)
+    err_fibre = _valider_lisible(valider_fichier_fibre, dossier / "fibre.csv", sites_valides)
     erreurs.extend(err_routes)
     erreurs.extend(err_fibre)
 
     if (dossier / "demandes.csv").exists():
-        erreurs.extend(valider_fichier_demandes(dossier / "demandes.csv", sites_valides))
+        erreurs.extend(_valider_lisible(valider_fichier_demandes, dossier / "demandes.csv", sites_valides))
 
     if (dossier / "scenarios.csv").exists():
         # un reseau deja en erreur ne sert pas de reference : pas d'erreurs en cascade
         arcs_routes = _lire_couples(dossier / "routes.csv") if not err_routes else None
         aretes_fibre = _lire_couples(dossier / "fibre.csv", non_oriente=True) if not err_fibre else None
-        erreurs.extend(valider_fichier_scenarios(dossier / "scenarios.csv", sites_valides, arcs_routes, aretes_fibre))
+        erreurs.extend(_valider_lisible(valider_fichier_scenarios, dossier / "scenarios.csv", sites_valides, arcs_routes, aretes_fibre))
 
     est_valide = len(erreurs) == 0
     if not est_valide and lever_exception:

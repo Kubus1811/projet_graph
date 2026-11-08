@@ -16,6 +16,7 @@ def circuit_existe(graphe):
 
 def sommets_sur_un_circuit(graphe):
     # diagonale de floyd-warshall : L[i][i] < 0 si i est sur un circuit absorbant
+    # la reciproque n'est pas garantie : i peut etre sur une boucle qui emprunte un circuit sans en faire partie
     if graphe.nombre_sommets() > TAILLE_MAX_FLOYD:
         return None
     return sommets_diagonale_negative(graphe)
@@ -54,7 +55,7 @@ def formater_circuits_absorbants(analyse):
     if sur_circuit is None:
         lignes.append(f"  (liste des sommets non calculee : plus de {TAILLE_MAX_FLOYD} sommets pour Floyd-Warshall)")
     elif sur_circuit:
-        lignes.append(f"  Sommets sur un circuit (diagonale de Floyd-Warshall) : {sur_circuit}")
+        lignes.append(f"  Diagonale negative de Floyd-Warshall (sur un circuit absorbant, ou sur une boucle qui en emprunte un) : {sur_circuit}")
 
     for s, r in analyse["sources"].items():
         lignes.append("")

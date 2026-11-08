@@ -194,8 +194,8 @@ def floyd_warshall(graphe):
 
 
 def sommets_diagonale_negative(graphe):
-    # lue avant la propagation : un sommet qui peut seulement rejoindre un circuit et en
-    # revenir a aussi une distance -inf vers lui-meme, sans etre sur ce circuit
+    # lue avant le marquage -inf, qui toucherait tout sommet pouvant rejoindre un circuit et en revenir
+    # une diagonale negative dit seulement qu'une boucle de cout negatif passe par ce sommet
     ids, L, _ = _floyd_warshall_brut(graphe)
     return sorted(ids[k] for k in range(len(ids)) if L[k][k] < 0)
 
